@@ -15,7 +15,7 @@ export class MembershipCardService {
   ): Promise<PaginatedResponse<MembershipCard>> {
     const response = await apiClient.get<PaginatedResponse<MembershipCard>>(
       '/cards',
-      filters
+      filters as unknown as Record<string, unknown>
     );
     if (response.success) {
       return response.data;
@@ -55,7 +55,7 @@ export class MembershipCardService {
     cardId: string,
     period: DateRange
   ): Promise<UsageRecord[]> {
-    const response = await apiClient.get<UsageRecord[]>(`/cards/${cardId}/usage`, period);
+    const response = await apiClient.get<UsageRecord[]>(`/cards/${cardId}/usage`, period as unknown as Record<string, unknown>);
     if (response.success) {
       return response.data;
     }
