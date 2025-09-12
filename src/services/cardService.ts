@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { mockCards, mockBatches, mockRedemptionRequests, mockCardStats } from './cardMockData';
+import { RecoveryPoolService } from './recoveryPoolService';
 import {
   MembershipCard,
   CardBatch,
@@ -243,6 +244,146 @@ class CardServiceClass {
       return response.data;
     } catch (error) {
       console.error('创建兑换申请失败:', error);
+      throw error;
+    }
+  }
+
+  // 审批权益回收申请（新增）
+  async approveRedemptionRequest(
+    requestId: string, 
+    operatorId: string, 
+    processReason?: string
+  ): Promise<{ request: RedemptionRequest; poolRecord: any }> {
+    if (USE_MOCK_DATA) {
+      const request = mockRedemptionRequests.find(r => r.id === requestId);
+      if (!request) {
+        throw new Error('兑换申请不存在');
+      }
+      
+      // 更新申请状态
+      request.status = 'approved';
+      request.processedAt = new Date().toISOString();
+      request.processedBy = operatorId;
+      request.reason = processReason;
+      
+      // 处理回收池
+      const poolRecord = await RecoveryPoolService.processRecoveryApproval(
+        requestId,
+        request.partnerId,
+        request.daysRemaining,
+        `会员卡权益回收 - ${request.originalCardNumber}`,
+        operatorId
+      );
+      
+      request.recoveryPoolRecordId = poolRecord.id;
+      
+      // 更新卡状态为已销卡
+      const card = mockCards.find(c => c.id === request.cardId);
+      if (card) {
+        card.status = CardStatus.CANCELLED;
+        card.updatedAt = new Date().toISOString();
+      }
+      
+      return Promise.resolve({ request, poolRecord });
+    }
+    
+    try {
+      const response = await this.api.post(`/redemptions/${requestId}/approve`, {
+        operatorId,
+        processReason
+      });
+      return response.data;
+    } catch (error) {
+      console.error('审批权益回收申请失败:', error);
+      throw error;
+    }
+  }
+
+  // 批量审批权益回收申请（新增）
+  async batchApproveRedemptionRequests(
+    requestIds: string[], 
+    operatorId: string, 
+    processReason?: string
+  ): Promise<{ approvedCount: number; totalDays: number; poolRecord: any }> {
+    if (USE_MOCK_DATA) {
+      let totalDays = 0;
+      let approvedCount = 0;
+      let partnerId = '';
+      
+      for (const requestId of requestIds) {
+        const request = mockRedemptionRequests.find(r => r.id === requestId);
+        if (request && request.status === 'pending') {
+          request.status = 'approved';
+          request.processedAt = new Date().toISOString();
+          request.processedBy = operatorId;
+          request.reason = processReason;
+          
+          totalDays += request.daysRemaining;
+          approvedCount++;
+          partnerId = request.partnerId;
+          
+          // 更新卡状态
+          const card = mockCards.find(c => c.id === request.cardId);
+          if (card) {
+            card.status = CardStatus.CANCELLED;
+            card.updatedAt = new Date().toISOString();
+          }
+        }
+      }
+      
+      // 处理批量回收池
+      const poolRecord = await RecoveryPoolService.processBatchRecoveryApproval(
+        `batch-${Date.now()}`,
+        partnerId,
+        totalDays,
+        approvedCount,
+        operatorId
+      );
+      
+      return Promise.resolve({ approvedCount, totalDays, poolRecord });
+    }
+    
+    try {
+      const response = await this.api.post('/redemptions/batch-approve', {
+        requestIds,
+        operatorId,
+        processReason
+      });
+      return response.data;
+    } catch (error) {
+      console.error('批量审批权益回收申请失败:', error);
+      throw error;
+    }
+  }
+
+  // 拒绝权益回收申请（新增）
+  async rejectRedemptionRequest(
+    requestId: string, 
+    operatorId: string, 
+    processReason: string
+  ): Promise<RedemptionRequest> {
+    if (USE_MOCK_DATA) {
+      const request = mockRedemptionRequests.find(r => r.id === requestId);
+      if (!request) {
+        throw new Error('兑换申请不存在');
+      }
+      
+      request.status = 'rejected';
+      request.processedAt = new Date().toISOString();
+      request.processedBy = operatorId;
+      request.reason = processReason;
+      
+      return Promise.resolve(request);
+    }
+    
+    try {
+      const response = await this.api.post(`/redemptions/${requestId}/reject`, {
+        operatorId,
+        processReason
+      });
+      return response.data;
+    } catch (error) {
+      console.error('拒绝权益回收申请失败:', error);
       throw error;
     }
   }

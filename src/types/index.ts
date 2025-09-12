@@ -395,6 +395,64 @@ export interface RedemptionRequest {
   processedBy?: string;          // 处理人
   newCardId?: string;            // 新卡ID（批准后）
   reason?: string;               // 处理原因
+  recoveryPoolRecordId?: string; // 回收池记录ID（批准后）
+}
+
+// 回收池状态
+export enum RecoveryPoolStatus {
+  ACTIVE = 'ACTIVE',       // 活跃
+  FROZEN = 'FROZEN',       // 冻结
+  EXHAUSTED = 'EXHAUSTED'  // 已用完
+}
+
+// 回收池记录类型
+export enum RecoveryPoolRecordType {
+  RECOVERY = 'RECOVERY',     // 权益回收
+  EXCHANGE = 'EXCHANGE',     // 兑换使用
+  ADJUSTMENT = 'ADJUSTMENT'  // 调整
+}
+
+// 回收池
+export interface RecoveryPool {
+  id: string;                    // 回收池ID
+  partnerId: string;             // 合作伙伴ID
+  totalDays: number;             // 总天数
+  usedDays: number;              // 已使用天数
+  availableDays: number;         // 可用天数
+  status: RecoveryPoolStatus;    // 状态
+  lastUpdatedAt: string;         // 最后更新时间
+  createdAt: string;             // 创建时间
+  updatedAt: string;             // 更新时间
+}
+
+// 回收池记录
+export interface RecoveryPoolRecord {
+  id: string;                    // 记录ID
+  poolId: string;                // 回收池ID
+  partnerId: string;             // 合作伙伴ID
+  type: RecoveryPoolRecordType;  // 记录类型
+  days: number;                  // 天数（正数为增加，负数为减少）
+  description: string;           // 描述
+  sourceId?: string;             // 来源ID（兑换申请ID或兑换订单ID）
+  sourceType?: string;           // 来源类型
+  operatorId?: string;           // 操作员ID
+  createdAt: string;             // 创建时间
+}
+
+// 批量兑换申请
+export interface BatchExchangeRequest {
+  id: string;                    // 申请ID
+  partnerId: string;             // 合作伙伴ID
+  requestedDays: number;         // 申请兑换天数
+  cardCount: number;             // 申请卡数量
+  cardType: CardType;            // 卡类型
+  status: 'pending' | 'approved' | 'rejected'; // 状态
+  reason?: string;               // 申请原因
+  processReason?: string;        // 处理原因
+  requestedAt: string;           // 申请时间
+  processedAt?: string;          // 处理时间
+  processedBy?: string;          // 处理人
+  generatedCards?: string[];     // 生成的卡片ID列表
 }
 
 // 创建兑换请求
