@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { RevenueSharingService } from '@/services/revenueSharingService';
 import { OrderService } from '@/services/orderService';
+import { OrderDetailsModal } from '@/components/orders/OrderDetailsModal';
 import { 
   SharingRecord, 
   SharingRule, 
@@ -65,7 +66,9 @@ export default function RevenueSharing() {
   // 模态框状态
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<SharingRecord | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
   const { user } = useAuthStore();
 
@@ -119,6 +122,11 @@ export default function RevenueSharing() {
     
     const statusInfo = statusMap[status as keyof typeof statusMap];
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  };
+
+  const handleOrderDetail = (order: Order) => {
+    setSelectedOrder(order);
+    setShowOrderDetailModal(true);
   };
 
   const statCards = [
@@ -220,6 +228,7 @@ export default function RevenueSharing() {
         <TabsList>
           <TabsTrigger value="my-sharing">我的分账</TabsTrigger>
           <TabsTrigger value="downstream">下游分账</TabsTrigger>
+          <TabsTrigger value="orders">分账订单</TabsTrigger>
           <TabsTrigger value="rules">分账规则</TabsTrigger>
         </TabsList>
 
@@ -315,6 +324,107 @@ export default function RevenueSharing() {
           </Card>
         </TabsContent>
 
+        {/* Orders Tab */}
+        <TabsContent value="orders">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 激活订单 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CreditCard className="h-5 w-5 mr-2" />
+                  激活订单
+                </CardTitle>
+                <CardDescription>会员卡激活产生的订单</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {activationOrders.map((order) => (
+                    <div 
+                      key={order.id} 
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <div>
+                        <p className="font-medium">{order.orderNumber}</p>
+                        <p className="text-sm text-gray-600">
+                          金额: ¥{order.amount.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(order.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={order.status === 'COMPLETED' ? 'default' : 'secondary'}>
+                          {order.status === 'COMPLETED' ? '已完成' : '处理中'}
+                        </Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleOrderDetail(order)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {activationOrders.length === 0 && (
+                    <div className="text-center text-gray-500 py-8">
+                      暂无激活订单
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 订阅订单 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  订阅订单
+                </CardTitle>
+                <CardDescription>用户自主订阅产生的订单</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {subscriptionOrders.map((order) => (
+                    <div 
+                      key={order.id} 
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <div>
+                        <p className="font-medium">{order.orderNumber}</p>
+                        <p className="text-sm text-gray-600">
+                          金额: ¥{order.amount.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(order.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={order.status === 'COMPLETED' ? 'default' : 'secondary'}>
+                          {order.status === 'COMPLETED' ? '已完成' : '处理中'}
+                        </Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleOrderDetail(order)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {subscriptionOrders.length === 0 && (
+                    <div className="text-center text-gray-500 py-8">
+                      暂无订阅订单
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         {/* Rules Tab */}
         <TabsContent value="rules">
           <Card>
@@ -378,6 +488,16 @@ export default function RevenueSharing() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* 订单详情模态框 */}
+      <OrderDetailsModal
+        isOpen={showOrderDetailModal}
+        onClose={() => {
+          setShowOrderDetailModal(false);
+          setSelectedOrder(null);
+        }}
+        order={selectedOrder}
+      />
     </div>
   );
 }

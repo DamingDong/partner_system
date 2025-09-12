@@ -11,7 +11,8 @@ import {
   RightsRecoveryResponse,
   ReplacementRequest,
   CardStatus,
-  CardType
+  CardType,
+  BindingData
 } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
@@ -144,6 +145,34 @@ class CardServiceClass {
       return response.data;
     } catch (error) {
       console.error('获取批次会员卡失败:', error);
+      throw error;
+    }
+  }
+
+  // 激活会员卡
+  async activateCard(cardId: string, activationData: BindingData): Promise<void> {
+    if (USE_MOCK_DATA) {
+      // 模拟激活过程
+      const card = mockCards.find(c => c.id === cardId);
+      if (card) {
+        card.status = CardStatus.BOUND;
+        card.activationDate = new Date().toISOString();
+        card.bindingInfo = {
+          phoneNumber: activationData.phoneNumber,
+          macAddress: activationData.macAddress,
+          channelPackage: activationData.channelPackage,
+          bindingTime: new Date().toISOString(),
+          deviceInfo: activationData.deviceInfo
+        };
+        card.updatedAt = new Date().toISOString();
+      }
+      return new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    try {
+      await this.api.post(`/${cardId}/activate`, activationData);
+    } catch (error) {
+      console.error('激活会员卡失败:', error);
       throw error;
     }
   }

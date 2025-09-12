@@ -1,458 +1,415 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '@/store/authStore';
+import React, { useState, useEffect } from 'react';
+import { MembershipCard, CardType, CardStatus, CardBatch } from '@/types';
 import { CardService } from '@/services/cardService';
-import { CoreSystemService } from '@/services/coreSystemService';
-import { 
-  MembershipCard, 
-  CardBatch, 
-  RedemptionRequest, 
-  ImportCardsRequest,
-  CreateRedemptionRequest,
-  CardType,
-  CardStatus
-} from '@/types';
-import { 
-  Upload, 
-  Search, 
-  Package, 
-  Calendar, 
-  AlertCircle, 
-  Gift, 
-  Download,
-  Plus,
-  FileText,
-  RefreshCw,
-  Filter,
-  MoreHorizontal,
-  Edit3,
-  Trash2,
-  Eye,
-  Settings
-} from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { CardActivationModal } from '@/components/cards/CardActivationModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { 
+  Search, 
+  Plus, 
+  Upload, 
+  Filter, 
+  RefreshCw,
+  CreditCard,
+  Users,
+  Calendar,
+  Activity
+} from 'lucide-react';
 
 const Cards: React.FC = () => {
   const { user } = useAuthStore();
-  
-  // 基础数据状态
   const [cards, setCards] = useState<MembershipCard[]>([]);
   const [batches, setBatches] = useState<CardBatch[]>([]);
-  const [redemptionRequests, setRedemptionRequests] = useState<RedemptionRequest[]>([]);
-  const [cardStats, setCardStats] = useState({
-    totalCards: 0,
-    activeCards: 0,
-    cancelledCards: 0,
-    expiredCards: 0
-  });
-  
-  // 加载状态
-  const [loading, setLoading] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  
-  // UI状态
-  const [activeTab, setActiveTab] = useState<'cards' | 'batches' | 'redemptions' | 'stats'>('cards');
-  const [selectedBatch, setSelectedBatch] = useState<string>('');
-  const [batchCards, setBatchCards] = useState<MembershipCard[]>([]);
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState<CardStatus | 'all'>('all');
-  
-  // 模态框状态
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [showBatchCreateModal, setShowBatchCreateModal] = useState(false);
-  const [showRedeemModal, setShowRedeemModal] = useState(false);
-  const [showCardDetailModal, setShowCardDetailModal] = useState(false);
-  
-  // 选中项状态
+  const [filteredCards, setFilteredCards] = useState<MembershipCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<CardStatus | 'ALL'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<CardType | 'ALL'>('ALL');
   const [selectedCard, setSelectedCard] = useState<MembershipCard | null>(null);
-  const [selectedCards, setSelectedCards] = useState<string[]>([]);
-  const [redemptionPoints, setRedemptionPoints] = useState<{ points: number; days: number } | null>(null);
-  
-  // 批量操作状态
-  const [batchImportData, setBatchImportData] = useState<{
-    batchName: string;
-    importMethod: 'file' | 'api';
-    cards: { cardNumber: string; cardType: CardType; expiryDate?: string }[];
-  }>({
-    batchName: '',
-    importMethod: 'file',
-    cards: []
-  });
-
-  // 数据加载函数
-  const loadData = useCallback(async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const partnerId = user.partnerId || user.id;
-      const [cardsData, batchesData, redemptionsData, statsData] = await Promise.all([
-        CardService.getCards(partnerId),
-        CardService.getBatches(partnerId),
-        CardService.getRedemptionRequests(partnerId),
-        CardService.getCardStats(partnerId)
-      ]);
-      
-      setCards(cardsData);
-      setBatches(batchesData);
-      setRedemptionRequests(redemptionsData);
-      setCardStats(statsData);
-    } catch (error) {
-      console.error('加载数据失败:', error);
-      toast.error('加载数据失败');
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [user]);
 
-  const handleFileUpload = async (file: File) => {
-    if (!user) return;
-    
+  useEffect(() => {
+    filterCards();
+  }, [cards, searchTerm, statusFilter, typeFilter]);
+
+  const loadData = async () => {
+    if (!user?.partnerId) return;
+
     try {
       setLoading(true);
-      await CardService.importCards(user.id, file);
-      await loadData();
-      setShowImportModal(false);
+      const [cardsData, batchesData] = await Promise.all([
+        CardService.getCards(user.partnerId),
+        CardService.getBatches(user.partnerId)
+      ]);
+      setCards(cardsData);
+      setBatches(batchesData);
     } catch (error) {
-      console.error('导入失败:', error);
+      console.error('加载数据失败:', error);
+      toast.error('加载数据失败，请重试');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBatchSelect = async (batchId: string) => {
-    setSelectedBatch(batchId);
-    try {
-      const cards = await CardService.getCardsByBatch(batchId);
-      setBatchCards(cards);
-    } catch (error) {
-      console.error('获取批次卡片失败:', error);
+  const filterCards = () => {
+    let filtered = cards;
+
+    // 按搜索关键词过滤
+    if (searchTerm) {
+      filtered = filtered.filter(card => 
+        card.cardNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        card.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
+
+    // 按状态过滤
+    if (statusFilter !== 'ALL') {
+      filtered = filtered.filter(card => card.status === statusFilter);
+    }
+
+    // 按类型过滤
+    if (typeFilter !== 'ALL') {
+      filtered = filtered.filter(card => card.cardType === typeFilter);
+    }
+
+    setFilteredCards(filtered);
   };
 
-  const handleCancelCard = async (cardId: string) => {
-    try {
-      await CardService.cancelCard(cardId);
-      await loadData();
-    } catch (error) {
-      console.error('销卡失败:', error);
-    }
-  };
-
-  const handleCalculateRedemption = async (card: MembershipCard) => {
+  const handleActivateCard = (card: MembershipCard) => {
     setSelectedCard(card);
+    setShowActivationModal(true);
+  };
+
+  const handleActivationSuccess = () => {
+    loadData(); // 重新加载数据以更新状态
+    toast.success('会员卡激活成功！');
+  };
+
+  const handleImportCards = async () => {
+    if (!importFile || !user?.partnerId) {
+      toast.error('请选择要导入的文件');
+      return;
+    }
+
     try {
-      const points = await CardService.calculateRedemptionPoints(card.id);
-      setRedemptionPoints(points);
-      setShowRedeemModal(true);
+      await CardService.importCards(user.partnerId, importFile);
+      toast.success('会员卡导入成功！');
+      setShowImportDialog(false);
+      setImportFile(null);
+      loadData(); // 重新加载数据
     } catch (error) {
-      console.error('计算积分失败:', error);
+      console.error('导入失败:', error);
+      toast.error('导入失败，请检查文件格式');
     }
   };
 
-  const handleRedeemCard = async (rewardType: 'monthly' | 'yearly') => {
-    if (!selectedCard || !redemptionPoints || !user) return;
-    
-    try {
-      await CardService.createRedemptionRequest({
-        cardId: selectedCard.id,
-        partnerId: user.partnerId || user.id,
-        points: redemptionPoints.points,
-        daysRemaining: redemptionPoints.days,
-        rewardType,
-        requestType: rewardType
-      });
-      await loadData();
-      setShowRedeemModal(false);
-      setSelectedCard(null);
-      setRedemptionPoints(null);
-    } catch (error) {
-      console.error('兑换失败:', error);
-    }
+  const getStatusBadge = (status: CardStatus) => {
+    const statusConfig = {
+      [CardStatus.UNACTIVATED]: { label: '待激活', variant: 'secondary' as const },
+      [CardStatus.INACTIVE]: { label: '未激活', variant: 'destructive' as const },
+      [CardStatus.BOUND]: { label: '已绑定', variant: 'default' as const },
+      [CardStatus.EXPIRED]: { label: '已过期', variant: 'outline' as const },
+      [CardStatus.CANCELLED]: { label: '已销卡', variant: 'destructive' as const },
+    };
+
+    const config = statusConfig[status];
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'text-green-600 bg-green-50';
-      case 'inactive': return 'text-gray-600 bg-gray-50';
-      case 'bound': return 'text-blue-600 bg-blue-50';
-      case 'expired': return 'text-red-600 bg-red-50';
-      case 'cancelled': return 'text-orange-600 bg-orange-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
+  const getTypeBadge = (type: CardType) => {
+    return (
+      <Badge variant={type === CardType.REGULAR ? 'default' : 'secondary'}>
+        {type === CardType.REGULAR ? '普通卡' : '绑定卡'}
+      </Badge>
+    );
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return '活跃';
-      case 'inactive': return '未激活';
-      case 'bound': return '已绑定';
-      case 'expired': return '已过期';
-      case 'cancelled': return '已销卡';
-      default: return status;
-    }
+  const getCardStats = () => {
+    const stats = {
+      total: cards.length,
+      unactivated: cards.filter(c => c.status === CardStatus.UNACTIVATED).length,
+      bound: cards.filter(c => c.status === CardStatus.BOUND).length,
+      expired: cards.filter(c => c.status === CardStatus.EXPIRED).length,
+    };
+    return stats;
   };
+
+  const stats = getCardStats();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">会员卡管理</h1>
-        <button
-          onClick={() => setShowImportModal(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Upload className="w-4 h-4" />
-          <span>批量导入</span>
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow">
-        <div className="border-b">
-          <nav className="flex space-x-8 px-6">
-            {[
-              { key: 'cards', label: '会员卡列表' },
-              { key: 'batches', label: '批次管理' },
-              { key: 'redemptions', label: '兑换申请' }
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.key
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+    <div className="space-y-6">
+      {/* 页面标题和操作 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">会员卡管理</h1>
+          <p className="text-muted-foreground">
+            管理和监控会员卡的状态、激活和使用情况
+          </p>
         </div>
-
-        <div className="p-6">
-          {activeTab === 'cards' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {cards.map((card) => (
-                  <div key={card.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{card.cardNumber}</h3>
-                        <p className="text-sm text-gray-500">批次: {card.batchId}</p>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(card.status)}`}>
-                        {getStatusText(card.status)}
-                      </span>
-                    </div>
-                    
-                    {card.activationDate && (
-                      <div className="text-sm text-gray-600">
-                        <p>激活时间: {new Date(card.activationDate).toLocaleDateString()}</p>
-                        {card.expiryDate && (
-                          <p>到期时间: {new Date(card.expiryDate).toLocaleDateString()}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {card.status === 'active' && (
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleCancelCard(card.id)}
-                          className="text-sm px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                        >
-                          申请销卡
-                        </button>
-                        <button
-                          onClick={() => handleCalculateRedemption(card)}
-                          className="text-sm px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
-                        >
-                          积分兑换
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'batches' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {batches.map((batch) => (
-                  <div key={batch.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{batch.batchNumber}</h3>
-                        <p className="text-sm text-gray-500">
-                          导入时间: {new Date(batch.importedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <span className="text-sm font-medium text-gray-600">
-                        {batch.quantity} 张卡
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleBatchSelect(batch.id)}
-                      className="mt-3 text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      查看详情
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {selectedBatch && batchCards.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="font-medium text-gray-900 mb-3">批次详情</h4>
-                  <div className="border rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {batchCards.map((card) => (
-                        <div key={card.id} className="border rounded p-3">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">{card.cardNumber}</span>
-                            <span className={`px-2 py-1 rounded text-xs ${getStatusColor(card.status)}`}>
-                              {getStatusText(card.status)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+        <div className="flex items-center space-x-2">
+          <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                导入会员卡
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>批量导入会员卡</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="cardFile">选择文件</Label>
+                  <Input
+                    id="cardFile"
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    支持 Excel (.xlsx, .xls) 和 CSV 格式
+                  </p>
                 </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'redemptions' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {redemptionRequests.map((request) => (
-                  <div key={request.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">
-                          兑换 {request.rewardType === 'monthly' ? '月卡' : '年卡'}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          卡号: {cards.find(c => c.id === request.cardId)?.cardNumber}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          积分: {request.points} 分 ({request.days} 天)
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        request.status === 'pending' ? 'text-yellow-600 bg-yellow-50' :
-                        request.status === 'approved' ? 'text-green-600 bg-green-50' :
-                        'text-red-600 bg-red-50'
-                      }`}>
-                        {request.status === 'pending' ? '待审核' :
-                         request.status === 'approved' ? '已通过' : '已拒绝'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      申请时间: {new Date(request.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))}
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+                    取消
+                  </Button>
+                  <Button onClick={handleImportCards} disabled={!importFile}>
+                    导入
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            </DialogContent>
+          </Dialog>
+          <Button onClick={loadData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            刷新
+          </Button>
         </div>
       </div>
 
-      {/* 导入模态框 */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4">批量导入会员卡</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  选择文件
-                </label>
-                <input
-                  type="file"
-                  accept=".csv,.xlsx"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file);
-                  }}
-                  className="w-full px-3 py-2 border rounded-md"
+      {/* 统计卡片 */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">总卡数</CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">待激活</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.unactivated}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">已绑定</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.bound}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">已过期</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.expired}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 搜索和筛选 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>筛选条件</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索卡号或ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
                 />
               </div>
-              <div className="text-sm text-gray-500">
-                支持 CSV 和 Excel 文件格式
-              </div>
             </div>
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="px-4 py-2 text-gray-700 border rounded-md hover:bg-gray-50"
-              >
-                取消
-              </button>
-            </div>
+            <Select value={statusFilter} onValueChange={(value: CardStatus | 'ALL') => setStatusFilter(value)}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="状态筛选" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">全部状态</SelectItem>
+                <SelectItem value={CardStatus.UNACTIVATED}>待激活</SelectItem>
+                <SelectItem value={CardStatus.BOUND}>已绑定</SelectItem>
+                <SelectItem value={CardStatus.EXPIRED}>已过期</SelectItem>
+                <SelectItem value={CardStatus.CANCELLED}>已销卡</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={(value: CardType | 'ALL') => setTypeFilter(value)}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="类型筛选" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">全部类型</SelectItem>
+                <SelectItem value={CardType.REGULAR}>普通卡</SelectItem>
+                <SelectItem value={CardType.BOUND}>绑定卡</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
-      {/* 兑换模态框 */}
-      {showRedeemModal && selectedCard && redemptionPoints && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4">积分兑换</h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">
-                  可兑换积分: <span className="font-medium">{redemptionPoints.points} 分</span>
-                </p>
-                <p className="text-sm text-gray-600">
-                  对应天数: <span className="font-medium">{redemptionPoints.days} 天</span>
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => handleRedeemCard('monthly')}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  兑换月卡
-                </button>
-                <button
-                  onClick={() => handleRedeemCard('yearly')}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-                >
-                  兑换年卡
-                </button>
-              </div>
-            </div>
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => {
-                  setShowRedeemModal(false);
-                  setSelectedCard(null);
-                  setRedemptionPoints(null);
-                }}
-                className="px-4 py-2 text-gray-700 border rounded-md hover:bg-gray-50"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 主要内容区域 */}
+      <Tabs defaultValue="cards" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="cards">会员卡列表</TabsTrigger>
+          <TabsTrigger value="batches">批次管理</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cards" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>会员卡列表</CardTitle>
+              <CardDescription>
+                共 {filteredCards.length} 张会员卡
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>卡号</TableHead>
+                    <TableHead>类型</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead>激活时间</TableHead>
+                    <TableHead>到期时间</TableHead>
+                    <TableHead>操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCards.map((card) => (
+                    <TableRow key={card.id}>
+                      <TableCell className="font-medium">{card.cardNumber}</TableCell>
+                      <TableCell>{getTypeBadge(card.cardType)}</TableCell>
+                      <TableCell>{getStatusBadge(card.status)}</TableCell>
+                      <TableCell>
+                        {card.activationDate 
+                          ? new Date(card.activationDate).toLocaleDateString() 
+                          : '-'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {card.expiryDate 
+                          ? new Date(card.expiryDate).toLocaleDateString() 
+                          : '-'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {card.status === CardStatus.UNACTIVATED && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleActivateCard(card)}
+                          >
+                            激活
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="batches" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>批次管理</CardTitle>
+              <CardDescription>
+                管理会员卡导入批次
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>批次号</TableHead>
+                    <TableHead>批次名称</TableHead>
+                    <TableHead>总卡数</TableHead>
+                    <TableHead>已激活</TableHead>
+                    <TableHead>导入方式</TableHead>
+                    <TableHead>创建时间</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {batches.map((batch) => (
+                    <TableRow key={batch.id}>
+                      <TableCell className="font-medium">{batch.batchNumber}</TableCell>
+                      <TableCell>{batch.name}</TableCell>
+                      <TableCell>{batch.totalCards}</TableCell>
+                      <TableCell>{batch.activatedCards}</TableCell>
+                      <TableCell>
+                        <Badge variant={batch.importMethod === 'file' ? 'default' : 'secondary'}>
+                          {batch.importMethod === 'file' ? '文件导入' : 'API导入'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(batch.createdAt).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* 激活模态框 */}
+      <CardActivationModal
+        isOpen={showActivationModal}
+        onClose={() => setShowActivationModal(false)}
+        card={selectedCard}
+        onActivationSuccess={handleActivationSuccess}
+      />
     </div>
   );
 };

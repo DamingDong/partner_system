@@ -17,18 +17,34 @@ import {
   BindingType
 } from '@/types';
 
-// Mock user data
-export const mockUser: User = {
-  id: 'user-001',
-  name: '管理员',
+// Mock user data - 管理员账号
+export const mockAdminUser: User = {
+  id: 'admin-001',
+  name: '系统管理员',
   username: 'admin',
   email: 'admin@example.com',
   phone: '13800138000',
   role: UserRole.ADMIN,
+  partnerId: undefined, // 管理员不需要partnerId
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z',
+};
+
+// Mock user data - 一级代理伙伴账号
+export const mockPartnerUser: User = {
+  id: 'partner-001',
+  name: '王代理',
+  username: 'partner001',
+  email: 'partner001@example.com',
+  phone: '13800138001',
+  role: UserRole.PARTNER,
   partnerId: 'partner-001',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
 };
+
+// 默认用户（可通过环境变量或其他方式切换）
+export const mockUser: User = mockPartnerUser;
 
 // Mock membership cards
 export const mockMembershipCards: MembershipCard[] = [
@@ -37,9 +53,11 @@ export const mockMembershipCards: MembershipCard[] = [
     cardNumber: 'MC001234567890',
     cardType: CardType.REGULAR,
     partnerId: 'partner-001',
-    remainingAmount: 5000,
-    totalAmount: 10000,
-    status: CardStatus.ACTIVE,
+    batchId: 'batch-001',
+    remainingDays: 365,
+    status: CardStatus.UNACTIVATED,
+    activationDate: '2024-01-01T00:00:00Z',
+    expiryDate: '2024-12-31T23:59:59Z',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   },
@@ -48,17 +66,16 @@ export const mockMembershipCards: MembershipCard[] = [
     cardNumber: 'MC001234567891',
     cardType: CardType.BOUND,
     partnerId: 'partner-001',
-    remainingAmount: 3000,
-    totalAmount: 8000,
+    batchId: 'batch-001',
+    remainingDays: 300,
     status: CardStatus.BOUND,
+    activationDate: '2024-01-15T00:00:00Z',
+    expiryDate: '2024-12-31T23:59:59Z',
     bindingInfo: {
-      id: '1',
-      cardId: '2',
-      bindingType: BindingType.MAC_ADDRESS,
-      macAddress: '00:11:22:33:44:55',
       phoneNumber: '13800138001',
+      macAddress: '00:11:22:33:44:55',
+      channelPackage: 'package-001',
       bindingTime: '2024-01-15T00:00:00Z',
-      isActive: true,
     },
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-15T00:00:00Z',
@@ -155,24 +172,144 @@ export const mockDashboardData: DashboardData = {
   ],
 };
 
+// 管理员权限配置
+export const adminPermissions = [
+  'admin:all',           // 管理员全权限
+  'dashboard:read',
+  'dashboard:write',
+  'cards:read',
+  'cards:write',
+  'cards:delete',
+  'cards:import',
+  'sharing:read',
+  'sharing:write',
+  'sharing:manage',
+  'reconciliation:read',
+  'reconciliation:write',
+  'reconciliation:approve',
+  'partners:read',
+  'partners:write',
+  'partners:delete',
+  'partners:manage',
+  'reports:read',
+  'reports:export',
+  'settings:read',
+  'settings:write',
+  'users:read',
+  'users:write',
+  'users:delete'
+];
+
+// 一级代理伙伴权限配置
+export const partnerPermissions = [
+  'dashboard:read',      // 仪表盘查看
+  'cards:read',          // 会员卡查看
+  'cards:write',         // 会员卡编辑（仅自己的）
+  'cards:import',        // 会员卡导入（仅自己的）
+  'sharing:read',        // 分账查看（仅自己的）
+  'reconciliation:read', // 对账单查看（仅自己的）
+  'reports:read',        // 报表查看（仅自己的数据）
+  'settings:read'        // 基础设置查看
+];
+
+// 管理员Dashboard数据
+export const mockAdminDashboardData: DashboardData = {
+  totalCards: 1500,        // 全平台会员卡总数
+  activeCards: 1200,       // 全平台活跃卡片
+  totalRevenue: 5000000,   // 全平台总收入
+  monthlyRevenue: 600000,  // 全平台月收入
+  totalSharing: 500000,    // 全平台分账总额
+  monthlySharing: 60000,   // 全平台月分账
+  recentTransactions: [
+    {
+      id: '1',
+      cardId: '1',
+      partnerId: 'partner-001',
+      amount: 10000,
+      transactionType: TransactionType.PURCHASE,
+      status: TransactionStatus.COMPLETED,
+      metadata: {
+        description: '合作伙伴充值',
+        source: 'admin',
+        reference: 'admin-ref-001',
+      },
+      createdAt: '2024-01-15T00:00:00Z',
+    },
+  ],
+  revenueChart: [
+    { date: '2024-01-01', revenue: 100000, sharing: 10000 },
+    { date: '2024-01-02', revenue: 120000, sharing: 12000 },
+    { date: '2024-01-03', revenue: 150000, sharing: 15000 },
+    { date: '2024-01-04', revenue: 110000, sharing: 11000 },
+    { date: '2024-01-05', revenue: 130000, sharing: 13000 },
+  ],
+};
+
+// 一级代理伙伴Dashboard数据
+export const mockPartnerDashboardData: DashboardData = {
+  totalCards: 150,         // 该伙伴的会员卡总数
+  activeCards: 120,        // 该伙伴的活跃卡片
+  totalRevenue: 500000,    // 该伙伴的总收入
+  monthlyRevenue: 60000,   // 该伙伴的月收入
+  totalSharing: 50000,     // 该伙伴的分账收入
+  monthlySharing: 6000,    // 该伙伴的月分账收入
+  recentTransactions: [
+    {
+      id: '1',
+      cardId: '1',
+      partnerId: 'partner-001',
+      amount: 1000,
+      transactionType: TransactionType.PURCHASE,
+      status: TransactionStatus.COMPLETED,
+      metadata: {
+        description: '会员卡充值',
+        source: 'partner',
+        reference: 'partner-ref-001',
+      },
+      createdAt: '2024-01-15T00:00:00Z',
+    },
+  ],
+  revenueChart: [
+    { date: '2024-01-01', revenue: 10000, sharing: 1000 },
+    { date: '2024-01-02', revenue: 12000, sharing: 1200 },
+    { date: '2024-01-03', revenue: 15000, sharing: 1500 },
+    { date: '2024-01-04', revenue: 11000, sharing: 1100 },
+    { date: '2024-01-05', revenue: 13000, sharing: 1300 },
+  ],
+};
+
 // Mock API responses
 export const mockApiResponses = {
+  // 管理员登录响应
+  adminLogin: {
+    success: true,
+    data: {
+      user: mockAdminUser,
+      accessToken: 'mock-admin-token',
+      refreshToken: 'mock-admin-refresh-token',
+      permissions: adminPermissions,
+    },
+  },
+  
+  // 一级代理伙伴登录响应
+  partnerLogin: {
+    success: true,
+    data: {
+      user: mockPartnerUser,
+      accessToken: 'mock-partner-token',
+      refreshToken: 'mock-partner-refresh-token',
+      permissions: partnerPermissions,
+    },
+  },
+  
+  // 默认登录响应（根据当前用户）
   login: {
     success: true,
     data: {
       user: mockUser,
       accessToken: 'mock-access-token',
       refreshToken: 'mock-refresh-token',
-      permissions: [
-        'dashboard:read', 
-        'cards:read', 
-        'cards:write', 
-        'sharing:read', 
-        'reconciliation:read',
-        'partners:read',
-        'reports:read',
-        'settings:read'
-      ],
+      permissions: mockUser.role === UserRole.ADMIN ? adminPermissions : partnerPermissions,
     },
   },
   
@@ -209,8 +346,59 @@ export const mockApiResponses = {
     },
   },
   
+  // 管理员Dashboard数据
+  adminDashboardData: {
+    success: true,
+    data: mockAdminDashboardData,
+  },
+  
+  // 一级代理伙伴Dashboard数据
+  partnerDashboardData: {
+    success: true,
+    data: mockPartnerDashboardData,
+  },
+  
+  // 默认Dashboard数据（根据当前用户角色）
   dashboardData: {
     success: true,
-    data: mockDashboardData,
+    data: mockUser.role === UserRole.ADMIN ? mockAdminDashboardData : mockPartnerDashboardData,
   },
 };
+
+// 开发环境用户切换工具
+export const switchMockUser = (userType: 'admin' | 'partner') => {
+  if (userType === 'admin') {
+    Object.assign(mockUser, mockAdminUser);
+    return {
+      user: mockAdminUser,
+      permissions: adminPermissions,
+      dashboardData: mockAdminDashboardData
+    };
+  } else {
+    Object.assign(mockUser, mockPartnerUser);
+    return {
+      user: mockPartnerUser,
+      permissions: partnerPermissions,
+      dashboardData: mockPartnerDashboardData
+    };
+  }
+};
+
+// 获取当前用户信息
+export const getCurrentUserInfo = () => {
+  return {
+    user: mockUser,
+    permissions: mockUser.role === UserRole.ADMIN ? adminPermissions : partnerPermissions,
+    dashboardData: mockUser.role === UserRole.ADMIN ? mockAdminDashboardData : mockPartnerDashboardData
+  };
+};
+
+// 在浏览器控制台中使用的全局切换函数
+if (typeof window !== 'undefined') {
+  (window as any).switchUser = switchMockUser;
+  (window as any).getCurrentUser = getCurrentUserInfo;
+  console.log('🚀 开发工具已加载：');
+  console.log('  - switchUser("admin") // 切换到管理员账号');
+  console.log('  - switchUser("partner") // 切换到一级代理伙伴账号');
+  console.log('  - getCurrentUser() // 查看当前用户信息');
+}

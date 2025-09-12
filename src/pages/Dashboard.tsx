@@ -2,13 +2,14 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { DashboardService } from '@/services/dashboardService';
-import { DashboardData, KPIMetrics, ChartData } from '@/types';
+import { DashboardData, KPIMetrics, ChartData, UserRole } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatsCard } from '@/components/ui/stats-card';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { PartnerDashboard } from '@/components/dashboard/PartnerDashboard';
 import {
   CreditCard,
   TrendingUp,
@@ -63,8 +64,17 @@ export default function Dashboard() {
     );
   }
 
+  // 根据用户角色渲染不同的Dashboard
+  if (user?.role === UserRole.PARTNER) {
+    return (
+      <PartnerDashboard 
+        dashboardData={dashboardData}
+        onRefresh={refetch}
+      />
+    );
+  }
 
-
+  // 管理员Dashboard保持原有逻辑
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -87,7 +97,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="总会员卡数"
-          value={kpiData?.totalCards || dashboardData?.totalCards || 0}
+          value={dashboardData?.totalCards || 0}
           icon={<CreditCard className="h-4 w-4" />}
           trend="+12%"
           trendUp={true}
@@ -95,7 +105,7 @@ export default function Dashboard() {
         />
         <StatsCard
           title="活跃会员卡"
-          value={kpiData?.activeCards || dashboardData?.activeCards || 0}
+          value={dashboardData?.activeCards || 0}
           icon={<Activity className="h-4 w-4" />}
           trend="+8%"
           trendUp={true}
@@ -103,7 +113,7 @@ export default function Dashboard() {
         />
         <StatsCard
           title="总收入"
-          value={`¥${(kpiData?.totalRevenue || dashboardData?.totalRevenue || 0).toLocaleString()}`}
+          value={`¥${(dashboardData?.totalRevenue || 0).toLocaleString()}`}
           icon={<DollarSign className="h-4 w-4" />}
           trend="+15%"
           trendUp={true}
@@ -111,7 +121,7 @@ export default function Dashboard() {
         />
         <StatsCard
           title="本月收入"
-          value={`¥${(kpiData?.monthlyRevenue || dashboardData?.monthlyRevenue || 0).toLocaleString()}`}
+          value={`¥${(dashboardData?.monthlyRevenue || 0).toLocaleString()}`}
           icon={<TrendingUp className="h-4 w-4" />}
           trend="-3%"
           trendUp={false}

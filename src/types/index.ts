@@ -318,8 +318,20 @@ export interface DashboardData {
   monthlyRevenue: number;
   totalSharing: number;
   monthlySharing: number;
+  pointsBalance?: number;        // 积分余额
   recentTransactions: Transaction[];
   revenueChart: ChartData[];
+  cardStats?: {
+    unactivated: number;
+    bound: number;
+    expired: number;
+    cancelled: number;
+  };
+  sharingStats?: {
+    totalReceived: number;
+    totalPaid: number;
+    sharingCount: number;
+  };
 }
 
 // 图表数据
@@ -467,6 +479,17 @@ export interface Order {
 }
 
 // 分账计算规则
+export interface SharingRule {
+  id: string;                    // 规则ID
+  partnerId: string;             // 合作伙伴ID
+  orderType: OrderType;          // 适用订单类型
+  commissionRate: number;        // 分账比例
+  conditions: RuleCondition[];   // 分账条件
+  priority: number;              // 优先级
+  effectiveDate: string;         // 生效时间
+  expiryDate?: string;           // 失效时间
+  isActive: boolean;             // 是否启用
+}// 分账计算规则
 export interface SharingRule {
   id: string;                    // 规则ID
   partnerId: string;             // 合作伙伴ID

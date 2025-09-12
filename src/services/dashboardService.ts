@@ -14,6 +14,7 @@ const mockDashboardData: DashboardData = {
   monthlyRevenue: 15800,
   totalSharing: 8500,
   monthlySharing: 1200,
+  pointsBalance: 2850, // 新增积分余额
   recentTransactions: [],
   revenueChart: [
     { date: '2024-01-01', revenue: 12000, sharing: 800 },
@@ -94,7 +95,7 @@ export class DashboardService {
 
     const response = await apiClient.get<KPIMetrics>(
       `/dashboard/${partnerId}/kpi`,
-      period || {}
+      period ? { startDate: period.startDate, endDate: period.endDate } : {}
     );
     if (response.success) {
       return response.data;
@@ -110,7 +111,7 @@ export class DashboardService {
 
     const response = await apiClient.get<ChartData[]>(
       `/dashboard/${partnerId}/revenue-chart`,
-      period || {}
+      period ? { startDate: period.startDate, endDate: period.endDate } : {}
     );
     if (response.success) {
       return response.data;
