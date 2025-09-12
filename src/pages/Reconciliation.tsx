@@ -35,13 +35,14 @@ export default function Reconciliation() {
   const { toast } = useToast();
 
   const loadData = async () => {
-    if (!user?.partnerId) return;
-
     try {
       setLoading(true);
       
+      // 如果是管理员，使用默认的partnerId
+      const partnerId = user?.partnerId || 'partner-001';
+      
       // 加载对账单列表
-      const response = await ReconciliationService.getStatementList(user.partnerId, {
+      const response = await ReconciliationService.getStatementList(partnerId, {
         period: selectedPeriod === 'all' ? '' : selectedPeriod,
         page: 1,
         pageSize: 50,
@@ -50,7 +51,7 @@ export default function Reconciliation() {
 
       // 加载统计数据
       const statsResponse = await ReconciliationService.getReconciliationStats(
-        user.partnerId,
+        partnerId,
         {
           startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
           endDate: new Date().toISOString(),
@@ -76,7 +77,7 @@ export default function Reconciliation() {
 
   useEffect(() => {
     loadData();
-  }, [user?.partnerId, selectedPeriod]);
+  }, [selectedPeriod]);
 
   const handleDownloadStatement = async (statementId: string, period: string) => {
     try {

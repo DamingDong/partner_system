@@ -1,7 +1,26 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, AuthResponse } from '@/types';
-import { mockUser } from '@/lib/mock-data';
+import { mockAdminUser, mockPartnerUser, adminPermissions, partnerPermissions } from '@/lib/mock-data';
+
+// 开发环境默认状态配置
+const isDevelopment = import.meta.env.DEV;
+
+// 根据环境变量或其他条件决定默认用户
+const getDefaultUser = () => {
+  // 开发环境可以有默认用户，生产环境应该是null
+  return isDevelopment ? mockPartnerUser : null; 
+};
+
+const getDefaultPermissions = (user: User | null) => {
+  if (!user) return [];
+  return user.role === 'ADMIN' ? adminPermissions : partnerPermissions;
+};
+
+const getDefaultIsAuthenticated = () => {
+  // 开发环境可以默认认证，生产环境应该是false
+  return isDevelopment;
+};
 
 interface AuthState {
   user: User | null;
@@ -19,11 +38,11 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      user: mockUser,
-      accessToken: 'mock-access-token',
-      refreshToken: 'mock-refresh-token',
-      permissions: ['dashboard:read', 'cards:read', 'cards:write', 'sharing:read', 'reconciliation:read', 'partners:read', 'reports:read', 'settings:read'],
-      isAuthenticated: true,
+      user: getDefaultUser(),
+      accessToken: isDevelopment ? 'mock-access-token' : null,
+      refreshToken: isDevelopment ? 'mock-refresh-token' : null,
+      permissions: getDefaultPermissions(getDefaultUser()),
+      isAuthenticated: getDefaultIsAuthenticated(),
 
       login: (authData: AuthResponse) => {
         set({

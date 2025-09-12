@@ -1,5 +1,5 @@
 // Mock API implementation for development
-import { mockApiResponses, mockUser, mockDashboardData } from './mock-data';
+import { mockApiResponses, mockAdminUser, mockPartnerUser, adminPermissions, partnerPermissions, mockDashboardData } from './mock-data';
 import { LoginRequest, AuthResponse } from '@/types';
 
 // Simulate network delay
@@ -11,13 +11,29 @@ export class MockApiClient {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     await delay(1000);
     
-    // Simple mock authentication
-    if (credentials.username === 'admin' && credentials.password === 'password') {
+    // 管理员登录（支持邮箱或用户名）
+    if ((credentials.username === 'admin@example.com' || credentials.username === 'admin') && credentials.password === 'password') {
       this.isLoggedIn = true;
-      return mockApiResponses.login.data;
+      return {
+        user: mockAdminUser,
+        accessToken: 'mock-admin-token',
+        refreshToken: 'mock-admin-refresh-token',
+        permissions: adminPermissions,
+      };
     }
     
-    throw new Error('用户名或密码错误');
+    // 合作伙伴登录（支持邮箱或用户名）
+    if ((credentials.username === 'partner001@example.com' || credentials.username === 'partner001') && credentials.password === 'password') {
+      this.isLoggedIn = true;
+      return {
+        user: mockPartnerUser,
+        accessToken: 'mock-partner-token',
+        refreshToken: 'mock-partner-refresh-token',
+        permissions: partnerPermissions,
+      };
+    }
+    
+    throw new Error('邮箱地址或密码错误');
   }
 
   async get<T>(url: string, params?: Record<string, unknown>): Promise<{ success: boolean; data: T }> {

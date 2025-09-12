@@ -1,199 +1,152 @@
-import { apiClient } from '@/lib/api';
-import {
-  SharingRecord,
-  RevenueSharingRule,
-  SharingRule,
-  OrderType,
+import { 
+  SharingRecord, 
+  SharingRule, 
+  PaginatedResponse, 
   DateRange,
-  PaginatedResponse,
+  OrderType
 } from '@/types';
+import { 
+  getSharingRecordsForPartner,
+  getSharingRulesForPartner,
+  getSharingStatsForPartner
+} from '@/lib/mock-data-sharing';
 
-// Mock数据
-const mockSharingRecords: SharingRecord[] = [
-  {
-    id: 'sharing-1',
-    transactionId: 'txn-001',
-    fromPartnerId: 'partner-001',
-    toPartnerId: 'partner-002',
-    amount: 29.9,
-    rate: 0.1,
-    ruleId: 'rule-001',
-    status: 'COMPLETED',
-    settledAt: '2024-01-15T10:35:00Z',
-    createdAt: '2024-01-15T10:30:00Z',
-  },
-];
-
-const mockSharingRules: SharingRule[] = [
-  {
-    id: 'rule-001',
-    partnerId: 'partner-001',
-    orderType: OrderType.ACTIVATION,
-    commissionRate: 0.1,
-    conditions: [],
-    priority: 1,
-    effectiveDate: '2024-01-01T00:00:00Z',
-    isActive: true,
-  },
-];
-
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK === 'true' || true;
 
 export class RevenueSharingService {
-  // 获取我的分账信息
+  // 获取我的分账记录（收到的分账）
   static async getMySharing(
-    partnerId: string,
-    period: DateRange,
-    page: number = 1,
+    partnerId: string, 
+    dateRange?: DateRange,
+    page: number = 1, 
     pageSize: number = 20
   ): Promise<PaginatedResponse<SharingRecord>> {
     if (USE_MOCK_DATA) {
-      const filtered = mockSharingRecords.filter(record => 
-        record.toPartnerId === partnerId &&
-        new Date(record.createdAt) >= new Date(period.startDate) &&
-        new Date(record.createdAt) <= new Date(period.endDate)
-      );
-      
-      const start = (page - 1) * pageSize;
-      const data = filtered.slice(start, start + pageSize);
-      
-      return Promise.resolve({
-        data,
-        total: filtered.length,
+      const records = getSharingRecordsForPartner(partnerId, 'received');
+      return {
+        data: records.slice((page - 1) * pageSize, page * pageSize),
+        total: records.length,
         page,
         pageSize,
-        totalPages: Math.ceil(filtered.length / pageSize)
-      });
+        totalPages: Math.ceil(records.length / pageSize),
+      };
     }
-
-    const response = await apiClient.get<PaginatedResponse<SharingRecord>>(
-      `/sharing/my/${partnerId}`,
-      { ...period, page, pageSize }
-    );
-    if (response.success) {
-      return response.data;
+    
+    try {
+      // 在实际环境中，这里会调用真实的API
+      const response = await fetch(`${API_BASE_URL}/revenue-sharing/my-sharing/${partnerId}`);
+      return response.json();
+    } catch (error) {
+      console.error('获取我的分账记录失败:', error);
+      throw error;
     }
-    throw new Error(response.message || '获取分账信息失败');
   }
 
-  // 获取下游分账信息
+  // 获取下游分账记录（支付的分账）
   static async getDownstreamSharing(
     partnerId: string,
     page: number = 1,
     pageSize: number = 20
   ): Promise<PaginatedResponse<SharingRecord>> {
     if (USE_MOCK_DATA) {
-      const filtered = mockSharingRecords.filter(record => 
-        record.fromPartnerId === partnerId
-      );
-      
-      const start = (page - 1) * pageSize;
-      const data = filtered.slice(start, start + pageSize);
-      
-      return Promise.resolve({
-        data,
-        total: filtered.length,
+      const records = getSharingRecordsForPartner(partnerId, 'paid');
+      return {
+        data: records.slice((page - 1) * pageSize, page * pageSize),
+        total: records.length,
         page,
         pageSize,
-        totalPages: Math.ceil(filtered.length / pageSize)
-      });
+        totalPages: Math.ceil(records.length / pageSize),
+      };
     }
-
-    const response = await apiClient.get<PaginatedResponse<SharingRecord>>(
-      `/sharing/downstream/${partnerId}`,
-      { page, pageSize }
-    );
-    if (response.success) {
-      return response.data;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/revenue-sharing/downstream-sharing/${partnerId}`);
+      return response.json();
+    } catch (error) {
+      console.error('获取下游分账记录失败:', error);
+      throw error;
     }
-    throw new Error(response.message || '获取下游分账信息失败');
   }
 
-  // 配置分账规则
-  static async configureSharingRule(rule: SharingRule): Promise<boolean> {
-    if (USE_MOCK_DATA) {
-      mockSharingRules.push({ ...rule, id: `rule-${Date.now()}` });
-      return Promise.resolve(true);
-    }
-
-    const response = await apiClient.post<boolean>('/sharing/rules', rule);
-    if (response.success) {
-      return response.data;
-    }
-    throw new Error(response.message || '配置分账规则失败');
-  }
-
-  // 获取分账规则列表
+  // 获取分账规则
   static async getSharingRules(partnerId: string): Promise<SharingRule[]> {
     if (USE_MOCK_DATA) {
-      return Promise.resolve(
-        mockSharingRules.filter(rule => rule.partnerId === partnerId)
-      );
+      return getSharingRulesForPartner(partnerId);
     }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/revenue-sharing/rules/${partnerId}`);
+      return response.json();
+    } catch (error) {
+      console.error('获取分账规则失败:', error);
+      throw error;
+    }
+  }
 
-    const response = await apiClient.get<SharingRule[]>(
-      `/sharing/rules/${partnerId}`
-    );
-    if (response.success) {
-      return response.data;
+  // 创建分账规则
+  static async createSharingRule(rule: Partial<SharingRule>): Promise<SharingRule> {
+    if (USE_MOCK_DATA) {
+      const newRule: SharingRule = {
+        id: `rule-${Date.now()}`,
+        partnerId: rule.partnerId!,
+        orderType: rule.orderType || OrderType.ACTIVATION,
+        commissionRate: rule.commissionRate || 0,
+        conditions: rule.conditions || [],
+        priority: rule.priority || 1,
+        effectiveDate: rule.effectiveDate || new Date().toISOString(),
+        isActive: rule.isActive ?? true,
+      };
+      
+      return Promise.resolve(newRule);
     }
-    throw new Error(response.message || '获取分账规则失败');
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/revenue-sharing/rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rule)
+      });
+      return response.json();
+    } catch (error) {
+      console.error('创建分账规则失败:', error);
+      throw error;
+    }
   }
 
   // 更新分账规则
-  static async updateSharingRule(
-    ruleId: string,
-    updates: Partial<SharingRule>
-  ): Promise<boolean> {
+  static async updateSharingRule(ruleId: string, updates: Partial<SharingRule>): Promise<SharingRule> {
     if (USE_MOCK_DATA) {
-      const ruleIndex = mockSharingRules.findIndex(rule => rule.id === ruleId);
-      if (ruleIndex >= 0) {
-        mockSharingRules[ruleIndex] = { ...mockSharingRules[ruleIndex], ...updates };
-      }
-      return Promise.resolve(true);
+      return Promise.resolve({ id: ruleId, ...updates } as SharingRule);
     }
-
-    const response = await apiClient.put<boolean>(`/sharing/rules/${ruleId}`, updates);
-    if (response.success) {
-      return response.data;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/revenue-sharing/rules/${ruleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      return response.json();
+    } catch (error) {
+      console.error('更新分账规则失败:', error);
+      throw error;
     }
-    throw new Error(response.message || '更新分账规则失败');
   }
 
   // 删除分账规则
-  static async deleteSharingRule(ruleId: string): Promise<boolean> {
+  static async deleteSharingRule(ruleId: string): Promise<void> {
     if (USE_MOCK_DATA) {
-      const ruleIndex = mockSharingRules.findIndex(rule => rule.id === ruleId);
-      if (ruleIndex >= 0) {
-        mockSharingRules.splice(ruleIndex, 1);
-      }
-      return Promise.resolve(true);
+      return Promise.resolve();
     }
-
-    const response = await apiClient.delete<boolean>(`/sharing/rules/${ruleId}`);
-    if (response.success) {
-      return response.data;
+    
+    try {
+      await fetch(`${API_BASE_URL}/revenue-sharing/rules/${ruleId}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.error('删除分账规则失败:', error);
+      throw error;
     }
-    throw new Error(response.message || '删除分账规则失败');
-  }
-
-  // 手动执行分账
-  static async processManualSharing(sharingData: {
-    transactionId: string;
-    partnerId: string;
-    amount: number;
-    ruleId: string;
-  }): Promise<boolean> {
-    if (USE_MOCK_DATA) {
-      // 模拟手动分账
-      return Promise.resolve(true);
-    }
-
-    const response = await apiClient.post<boolean>('/sharing/manual', sharingData);
-    if (response.success) {
-      return response.data;
-    }
-    throw new Error(response.message || '手动分账失败');
   }
 
   // 获取分账统计
@@ -204,34 +157,19 @@ export class RevenueSharingService {
     sharingCount: number;
   }> {
     if (USE_MOCK_DATA) {
-      const filtered = mockSharingRecords.filter(record => 
-        (record.fromPartnerId === partnerId || record.toPartnerId === partnerId) &&
-        (!period || (
-          new Date(record.createdAt) >= new Date(period.startDate) &&
-          new Date(record.createdAt) <= new Date(period.endDate)
-        ))
-      );
-
-      const received = filtered.filter(r => r.toPartnerId === partnerId);
-      const paid = filtered.filter(r => r.fromPartnerId === partnerId);
-
-      return Promise.resolve({
-        totalSharing: filtered.reduce((sum, r) => sum + r.amount, 0),
-        totalReceived: received.reduce((sum, r) => sum + r.amount, 0),
-        totalPaid: paid.reduce((sum, r) => sum + r.amount, 0),
-        sharingCount: filtered.length,
-      });
+      return getSharingStatsForPartner(partnerId);
     }
-
-    const response = await apiClient.get<{
-      totalSharing: number;
-      totalReceived: number;
-      totalPaid: number;
-      sharingCount: number;
-    }>(`/sharing/stats/${partnerId}`, period || {});
-    if (response.success) {
-      return response.data;
+    
+    try {
+      const url = new URL(`${API_BASE_URL}/revenue-sharing/stats/${partnerId}`);
+      if (period?.startDate) url.searchParams.set('startDate', period.startDate);
+      if (period?.endDate) url.searchParams.set('endDate', period.endDate);
+      
+      const response = await fetch(url.toString());
+      return response.json();
+    } catch (error) {
+      console.error('获取分账统计失败:', error);
+      throw error;
     }
-    throw new Error(response.message || '获取分账统计失败');
   }
 }

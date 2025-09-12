@@ -1,132 +1,68 @@
-import axios from 'axios';
-import { 
-  Order, 
-  OrderType, 
+import {
+  Order,
+  OrderType,
   OrderStatus,
-  SharingRecord,
   PaginatedResponse,
   DateRange
 } from '@/types';
+import {
+  getOrdersForPartner,
+  getOrderStatsForPartner,
+  getOrderById
+} from '@/lib/mock-data-orders';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK === 'true' || true;
 
-// Mock数据
-const mockOrders: Order[] = [
-  {
-    id: 'order-1',
-    orderNumber: 'ORD20240101001',
-    type: OrderType.ACTIVATION,
-    partnerId: 'partner-001',
-    cardId: 'card-001',
-    userId: 'user-001',
-    amount: 299.00,
-    status: OrderStatus.COMPLETED,
-    paymentTime: '2024-01-15T10:30:00Z',
-    sharingRecords: [],
-    createdAt: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: 'order-2',
-    orderNumber: 'ORD20240101002',
-    type: OrderType.SUBSCRIPTION,
-    partnerId: 'partner-001',
-    userId: 'user-002',
-    amount: 599.00,
-    status: OrderStatus.COMPLETED,
-    paymentTime: '2024-01-16T14:20:00Z',
-    sharingRecords: [],
-    createdAt: '2024-01-16T14:00:00Z',
-  },
-];
-
-class OrderServiceClass {
-  private api = axios.create({
-    baseURL: `${API_BASE_URL}/orders`,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  // 设置认证token
-  setAuthToken(token: string) {
-    this.api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  }
-
-  // 获取激活订单列表
-  async getActivationOrders(
+export class OrderService {
+  // 获取激活订单
+  static async getActivationOrders(
     partnerId: string,
-    period?: DateRange,
+    dateRange?: DateRange,
     page: number = 1,
     pageSize: number = 20
   ): Promise<PaginatedResponse<Order>> {
     if (USE_MOCK_DATA) {
-      const filtered = mockOrders.filter(order => 
-        order.partnerId === partnerId && 
-        order.type === OrderType.ACTIVATION &&
-        (!period || (
-          new Date(order.createdAt) >= new Date(period.startDate) &&
-          new Date(order.createdAt) <= new Date(period.endDate)
-        ))
-      );
-      
-      const start = (page - 1) * pageSize;
-      const data = filtered.slice(start, start + pageSize);
-      
-      return Promise.resolve({
-        data,
-        total: filtered.length,
+      const orders = getOrdersForPartner(partnerId, OrderType.ACTIVATION);
+      return {
+        data: orders.slice((page - 1) * pageSize, page * pageSize),
+        total: orders.length,
         page,
         pageSize,
-        totalPages: Math.ceil(filtered.length / pageSize)
-      });
+        totalPages: Math.ceil(orders.length / pageSize),
+      };
     }
-
+    
     try {
-      const response = await this.api.get(`/activation/${partnerId}`, {
-        params: { ...period, page, pageSize }
-      });
-      return response.data;
+      const response = await fetch(`${API_BASE_URL}/orders/activation/${partnerId}`);
+      return response.json();
     } catch (error) {
       console.error('获取激活订单失败:', error);
       throw error;
     }
   }
 
-  // 获取订阅订单列表
-  async getSubscriptionOrders(
+  // 获取订阅订单
+  static async getSubscriptionOrders(
     partnerId: string,
-    period?: DateRange,
+    dateRange?: DateRange,
     page: number = 1,
     pageSize: number = 20
   ): Promise<PaginatedResponse<Order>> {
     if (USE_MOCK_DATA) {
-      const filtered = mockOrders.filter(order => 
-        order.partnerId === partnerId && 
-        order.type === OrderType.SUBSCRIPTION &&
-        (!period || (
-          new Date(order.createdAt) >= new Date(period.startDate) &&
-          new Date(order.createdAt) <= new Date(period.endDate)
-        ))
-      );
-      
-      const start = (page - 1) * pageSize;
-      const data = filtered.slice(start, start + pageSize);
-      
-      return Promise.resolve({
-        data,
-        total: filtered.length,
+      const orders = getOrdersForPartner(partnerId, OrderType.SUBSCRIPTION);
+      return {
+        data: orders.slice((page - 1) * pageSize, page * pageSize),
+        total: orders.length,
         page,
         pageSize,
-        totalPages: Math.ceil(filtered.length / pageSize)
-      });
+        totalPages: Math.ceil(orders.length / pageSize),
+      };
     }
-
+    
     try {
-      const response = await this.api.get(`/subscription/${partnerId}`, {
-        params: { ...period, page, pageSize }
-      });
-      return response.data;
+      const response = await fetch(`${API_BASE_URL}/orders/subscription/${partnerId}`);
+      return response.json();
     } catch (error) {
       console.error('获取订阅订单失败:', error);
       throw error;
@@ -134,65 +70,100 @@ class OrderServiceClass {
   }
 
   // 获取所有订单
-  async getAllOrders(
+  static async getAllOrders(
     partnerId: string,
-    period?: DateRange,
+    dateRange?: DateRange,
     page: number = 1,
     pageSize: number = 20
   ): Promise<PaginatedResponse<Order>> {
     if (USE_MOCK_DATA) {
-      const filtered = mockOrders.filter(order => 
-        order.partnerId === partnerId &&
-        (!period || (
-          new Date(order.createdAt) >= new Date(period.startDate) &&
-          new Date(order.createdAt) <= new Date(period.endDate)
-        ))
-      );
-      
-      const start = (page - 1) * pageSize;
-      const data = filtered.slice(start, start + pageSize);
-      
-      return Promise.resolve({
-        data,
-        total: filtered.length,
+      const orders = getOrdersForPartner(partnerId);
+      return {
+        data: orders.slice((page - 1) * pageSize, page * pageSize),
+        total: orders.length,
         page,
         pageSize,
-        totalPages: Math.ceil(filtered.length / pageSize)
-      });
+        totalPages: Math.ceil(orders.length / pageSize),
+      };
     }
-
+    
     try {
-      const response = await this.api.get(`/partner/${partnerId}`, {
-        params: { ...period, page, pageSize }
-      });
-      return response.data;
+      const response = await fetch(`${API_BASE_URL}/orders/all/${partnerId}`);
+      return response.json();
     } catch (error) {
       console.error('获取订单列表失败:', error);
       throw error;
     }
   }
 
-  // 获取订单详情
-  async getOrderDetail(orderId: string): Promise<Order> {
+  // 根据ID获取订单详情
+  static async getOrderById(orderId: string): Promise<Order | null> {
     if (USE_MOCK_DATA) {
-      const order = mockOrders.find(o => o.id === orderId);
-      if (!order) {
-        throw new Error('订单不存在');
-      }
-      return Promise.resolve(order);
+      return getOrderById(orderId) || null;
     }
-
+    
     try {
-      const response = await this.api.get(`/${orderId}`);
-      return response.data;
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}`);
+      return response.json();
     } catch (error) {
       console.error('获取订单详情失败:', error);
       throw error;
     }
   }
 
+  // 创建订单
+  static async createOrder(orderData: Partial<Order>): Promise<Order> {
+    if (USE_MOCK_DATA) {
+      const newOrder: Order = {
+        id: `order-${Date.now()}`,
+        orderNumber: `ORD${Date.now()}`,
+        type: orderData.type || OrderType.ACTIVATION,
+        partnerId: orderData.partnerId!,
+        userId: orderData.userId!,
+        amount: orderData.amount || 0,
+        status: OrderStatus.PENDING,
+        sharingRecords: [],
+        createdAt: new Date().toISOString(),
+        ...orderData,
+      };
+      
+      return Promise.resolve(newOrder);
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      });
+      return response.json();
+    } catch (error) {
+      console.error('创建订单失败:', error);
+      throw error;
+    }
+  }
+
+  // 更新订单状态
+  static async updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
+    if (USE_MOCK_DATA) {
+      return Promise.resolve({ id: orderId, status } as Order);
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      return response.json();
+    } catch (error) {
+      console.error('更新订单状态失败:', error);
+      throw error;
+    }
+  }
+
   // 获取订单统计
-  async getOrderStats(partnerId: string, period?: DateRange): Promise<{
+  static async getOrderStats(partnerId: string, period?: DateRange): Promise<{
     totalOrders: number;
     activationOrders: number;
     subscriptionOrders: number;
@@ -201,37 +172,19 @@ class OrderServiceClass {
     subscriptionAmount: number;
   }> {
     if (USE_MOCK_DATA) {
-      const filtered = mockOrders.filter(order => 
-        order.partnerId === partnerId &&
-        (!period || (
-          new Date(order.createdAt) >= new Date(period.startDate) &&
-          new Date(order.createdAt) <= new Date(period.endDate)
-        ))
-      );
-
-      const activationOrders = filtered.filter(o => o.type === OrderType.ACTIVATION);
-      const subscriptionOrders = filtered.filter(o => o.type === OrderType.SUBSCRIPTION);
-
-      return Promise.resolve({
-        totalOrders: filtered.length,
-        activationOrders: activationOrders.length,
-        subscriptionOrders: subscriptionOrders.length,
-        totalAmount: filtered.reduce((sum, o) => sum + o.amount, 0),
-        activationAmount: activationOrders.reduce((sum, o) => sum + o.amount, 0),
-        subscriptionAmount: subscriptionOrders.reduce((sum, o) => sum + o.amount, 0),
-      });
+      return getOrderStatsForPartner(partnerId);
     }
-
+    
     try {
-      const response = await this.api.get(`/stats/${partnerId}`, {
-        params: period
-      });
-      return response.data;
+      const url = new URL(`${API_BASE_URL}/orders/stats/${partnerId}`);
+      if (period?.startDate) url.searchParams.set('startDate', period.startDate);
+      if (period?.endDate) url.searchParams.set('endDate', period.endDate);
+      
+      const response = await fetch(url.toString());
+      return response.json();
     } catch (error) {
       console.error('获取订单统计失败:', error);
       throw error;
     }
   }
 }
-
-export const OrderService = new OrderServiceClass();

@@ -208,6 +208,7 @@ export const partnerPermissions = [
   'cards:import',        // 会员卡导入（仅自己的）
   'sharing:read',        // 分账查看（仅自己的）
   'reconciliation:read', // 对账单查看（仅自己的）
+  'partners:read',       // 合作伙伴查看（仅自己的子伙伴）
   'reports:read',        // 报表查看（仅自己的数据）
   'settings:read'        // 基础设置查看
 ];
@@ -367,20 +368,49 @@ export const mockApiResponses = {
 
 // 开发环境用户切换工具
 export const switchMockUser = (userType: 'admin' | 'partner') => {
+  // 获取authStore实例（如果在浏览器环境中）
+  let authStore: any = null;
+  if (typeof window !== 'undefined') {
+    // 尝试从全局获取authStore
+    authStore = (window as any).__authStore;
+  }
+  
   if (userType === 'admin') {
-    Object.assign(mockUser, mockAdminUser);
-    return {
+    const userData = {
       user: mockAdminUser,
       permissions: adminPermissions,
       dashboardData: mockAdminDashboardData
     };
+    
+    // 如果有authStore，更新它的状态
+    if (authStore) {
+      authStore.getState().login({
+        user: mockAdminUser,
+        accessToken: 'mock-admin-token',
+        refreshToken: 'mock-admin-refresh-token',
+        permissions: adminPermissions,
+      });
+    }
+    
+    return userData;
   } else {
-    Object.assign(mockUser, mockPartnerUser);
-    return {
+    const userData = {
       user: mockPartnerUser,
       permissions: partnerPermissions,
       dashboardData: mockPartnerDashboardData
     };
+    
+    // 如果有authStore，更新它的状态
+    if (authStore) {
+      authStore.getState().login({
+        user: mockPartnerUser,
+        accessToken: 'mock-partner-token',
+        refreshToken: 'mock-partner-refresh-token',
+        permissions: partnerPermissions,
+      });
+    }
+    
+    return userData;
   }
 };
 
@@ -397,8 +427,18 @@ export const getCurrentUserInfo = () => {
 if (typeof window !== 'undefined') {
   (window as any).switchUser = switchMockUser;
   (window as any).getCurrentUser = getCurrentUserInfo;
+  
+  // 导出authStore到全局，供switchUser使用
+  import('@/store/authStore').then(({ useAuthStore }) => {
+    (window as any).__authStore = useAuthStore;
+  });
+  
   console.log('🚀 开发工具已加载：');
   console.log('  - switchUser("admin") // 切换到管理员账号');
   console.log('  - switchUser("partner") // 切换到一级代理伙伴账号');
   console.log('  - getCurrentUser() // 查看当前用户信息');
+  console.log('  - 切换用户后刷新页面以生效');
+  console.log('\n📝 测试账号信息：');
+  console.log('  - 管理员: admin@example.com / password');
+  console.log('  - 合作伙伴: partner001@example.com / password');
 }

@@ -48,13 +48,15 @@ const Cards: React.FC = () => {
   }, [cards, searchTerm, statusFilter, typeFilter]);
 
   const loadData = async () => {
-    if (!user?.partnerId) return;
-
     try {
       setLoading(true);
+      
+      // 如果是管理员，使用默认的partnerId
+      const partnerId = user?.partnerId || 'partner-001';
+      
       const [cardsData, batchesData] = await Promise.all([
-        CardService.getCards(user.partnerId),
-        CardService.getBatches(user.partnerId)
+        CardService.getCards(partnerId),
+        CardService.getBatches(partnerId)
       ]);
       setCards(cardsData);
       setBatches(batchesData);
@@ -101,13 +103,16 @@ const Cards: React.FC = () => {
   };
 
   const handleImportCards = async () => {
-    if (!importFile || !user?.partnerId) {
+    if (!importFile) {
       toast.error('请选择要导入的文件');
       return;
     }
 
     try {
-      await CardService.importCards(user.partnerId, importFile);
+      // 如果是管理员，使用默认的partnerId
+      const partnerId = user?.partnerId || 'partner-001';
+      
+      await CardService.importCards(partnerId, importFile);
       toast.success('会员卡导入成功！');
       setShowImportDialog(false);
       setImportFile(null);
@@ -212,67 +217,64 @@ const Cards: React.FC = () => {
         </div>
       </div>
 
-      {/* 统计卡片 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">总卡数</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">待激活</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.unactivated}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">已绑定</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.bound}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">已过期</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.expired}</div>
-          </CardContent>
-        </Card>
+      {/* 统计概览 */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="bg-card rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">总卡数</p>
+              <p className="text-2xl font-bold">{stats.total}</p>
+            </div>
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">待激活</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.unactivated}</p>
+            </div>
+            <Calendar className="h-5 w-5 text-orange-500" />
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">已绑定</p>
+              <p className="text-2xl font-bold text-green-600">{stats.bound}</p>
+            </div>
+            <Users className="h-5 w-5 text-green-500" />
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">已过期</p>
+              <p className="text-2xl font-bold text-red-600">{stats.expired}</p>
+            </div>
+            <Activity className="h-5 w-5 text-red-500" />
+          </div>
+        </div>
       </div>
 
       {/* 搜索和筛选 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>筛选条件</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="搜索卡号或ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
+      <div className="bg-card rounded-lg border p-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="搜索卡号或ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
             </div>
+          </div>
+          <div className="flex gap-2">
             <Select value={statusFilter} onValueChange={(value: CardStatus | 'ALL') => setStatusFilter(value)}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="状态筛选" />
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="状态" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">全部状态</SelectItem>
@@ -283,8 +285,8 @@ const Cards: React.FC = () => {
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={(value: CardType | 'ALL') => setTypeFilter(value)}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="类型筛选" />
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="类型" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">全部类型</SelectItem>
@@ -293,8 +295,8 @@ const Cards: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 主要内容区域 */}
       <Tabs defaultValue="cards" className="space-y-4">
@@ -304,102 +306,163 @@ const Cards: React.FC = () => {
         </TabsList>
 
         <TabsContent value="cards" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>会员卡列表</CardTitle>
-              <CardDescription>
-                共 {filteredCards.length} 张会员卡
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="bg-card rounded-lg border">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">会员卡列表</h3>
+                  <p className="text-sm text-muted-foreground">
+                    共 {filteredCards.length} 张会员卡
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>卡号</TableHead>
-                    <TableHead>类型</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>激活时间</TableHead>
-                    <TableHead>到期时间</TableHead>
-                    <TableHead>操作</TableHead>
+                    <TableHead className="w-32">卡号</TableHead>
+                    <TableHead className="w-20">类型</TableHead>
+                    <TableHead className="w-20">状态</TableHead>
+                    <TableHead className="w-24">激活时间</TableHead>
+                    <TableHead className="w-24">到期时间</TableHead>
+                    <TableHead className="w-24">剩余天数</TableHead>
+                    <TableHead className="w-20">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCards.map((card) => (
-                    <TableRow key={card.id}>
-                      <TableCell className="font-medium">{card.cardNumber}</TableCell>
-                      <TableCell>{getTypeBadge(card.cardType)}</TableCell>
-                      <TableCell>{getStatusBadge(card.status)}</TableCell>
-                      <TableCell>
-                        {card.activationDate 
-                          ? new Date(card.activationDate).toLocaleDateString() 
-                          : '-'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {card.expiryDate 
-                          ? new Date(card.expiryDate).toLocaleDateString() 
-                          : '-'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {card.status === CardStatus.UNACTIVATED && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleActivateCard(card)}
-                          >
-                            激活
-                          </Button>
-                        )}
+                  {filteredCards.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        暂无会员卡数据
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredCards.map((card) => (
+                      <TableRow key={card.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium font-mono">
+                          {card.cardNumber}
+                        </TableCell>
+                        <TableCell>{getTypeBadge(card.cardType)}</TableCell>
+                        <TableCell>{getStatusBadge(card.status)}</TableCell>
+                        <TableCell className="text-sm">
+                          {card.activationDate 
+                            ? new Date(card.activationDate).toLocaleDateString('zh-CN') 
+                            : '-'
+                          }
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {card.expiryDate 
+                            ? new Date(card.expiryDate).toLocaleDateString('zh-CN') 
+                            : '-'
+                          }
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {card.remainingDays ? (
+                            <span className={`font-medium ${
+                              card.remainingDays <= 30 
+                                ? 'text-red-600' 
+                                : card.remainingDays <= 90 
+                                ? 'text-orange-600' 
+                                : 'text-green-600'
+                            }`}>
+                              {card.remainingDays}天
+                            </span>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {card.status === CardStatus.UNACTIVATED && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleActivateCard(card)}
+                              className="h-8 px-3"
+                            >
+                              激活
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="batches" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>批次管理</CardTitle>
-              <CardDescription>
-                管理会员卡导入批次
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="bg-card rounded-lg border">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">批次管理</h3>
+                  <p className="text-sm text-muted-foreground">
+                    管理会员卡导入批次
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>批次号</TableHead>
+                    <TableHead className="w-32">批次号</TableHead>
                     <TableHead>批次名称</TableHead>
-                    <TableHead>总卡数</TableHead>
-                    <TableHead>已激活</TableHead>
-                    <TableHead>导入方式</TableHead>
-                    <TableHead>创建时间</TableHead>
+                    <TableHead className="w-20">总卡数</TableHead>
+                    <TableHead className="w-20">已激活</TableHead>
+                    <TableHead className="w-24">进度</TableHead>
+                    <TableHead className="w-24">导入方式</TableHead>
+                    <TableHead className="w-28">创建时间</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {batches.map((batch) => (
-                    <TableRow key={batch.id}>
-                      <TableCell className="font-medium">{batch.batchNumber}</TableCell>
-                      <TableCell>{batch.name}</TableCell>
-                      <TableCell>{batch.totalCards}</TableCell>
-                      <TableCell>{batch.activatedCards}</TableCell>
-                      <TableCell>
-                        <Badge variant={batch.importMethod === 'file' ? 'default' : 'secondary'}>
-                          {batch.importMethod === 'file' ? '文件导入' : 'API导入'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(batch.createdAt).toLocaleDateString()}
+                  {batches.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        暂无批次数据
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    batches.map((batch) => {
+                      const progress = batch.totalCards > 0 ? (batch.activatedCards / batch.totalCards) * 100 : 0;
+                      return (
+                        <TableRow key={batch.id} className="hover:bg-muted/50">
+                          <TableCell className="font-medium font-mono">
+                            {batch.batchNumber}
+                          </TableCell>
+                          <TableCell className="font-medium">{batch.name}</TableCell>
+                          <TableCell className="text-center">{batch.totalCards}</TableCell>
+                          <TableCell className="text-center">{batch.activatedCards}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full transition-all" 
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground min-w-[3rem]">
+                                {Math.round(progress)}%
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={batch.importMethod === 'file' ? 'default' : 'secondary'}>
+                              {batch.importMethod === 'file' ? '文件导入' : 'API导入'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {new Date(batch.createdAt).toLocaleDateString('zh-CN')}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

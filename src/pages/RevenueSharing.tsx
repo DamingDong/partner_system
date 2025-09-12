@@ -74,19 +74,20 @@ export default function RevenueSharing() {
 
   // 数据加载函数
   const loadData = useCallback(async () => {
-    if (!user?.partnerId) return;
-
     try {
       setLoading(true);
       
+      // 如果是管理员，使用默认的partnerId
+      const partnerId = user?.partnerId || 'partner-001';
+      
       // 并行加载所有数据
       const [myResponse, downstreamResponse, rulesResponse, statsResponse, activationResponse, subscriptionResponse] = await Promise.all([
-        RevenueSharingService.getMySharing(user.partnerId, dateRange, currentPage, pageSize),
-        RevenueSharingService.getDownstreamSharing(user.partnerId, currentPage, pageSize),
-        RevenueSharingService.getSharingRules(user.partnerId),
-        RevenueSharingService.getSharingStats(user.partnerId, dateRange),
-        OrderService.getActivationOrders(user.partnerId, dateRange, 1, 10),
-        OrderService.getSubscriptionOrders(user.partnerId, dateRange, 1, 10)
+        RevenueSharingService.getMySharing(partnerId, dateRange, currentPage, pageSize),
+        RevenueSharingService.getDownstreamSharing(partnerId, currentPage, pageSize),
+        RevenueSharingService.getSharingRules(partnerId),
+        RevenueSharingService.getSharingStats(partnerId, dateRange),
+        OrderService.getActivationOrders(partnerId, dateRange, 1, 10),
+        OrderService.getSubscriptionOrders(partnerId, dateRange, 1, 10)
       ]);
       
       setMySharing(myResponse.data || []);
@@ -107,7 +108,7 @@ export default function RevenueSharing() {
     } finally {
       setLoading(false);
     }
-  }, [user?.partnerId, dateRange, currentPage, pageSize]);
+  }, [dateRange, currentPage, pageSize]);
 
   useEffect(() => {
     loadData();
