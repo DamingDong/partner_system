@@ -541,6 +541,73 @@ class CardServiceClass {
       throw error;
     }
   }
+
+  // 获取批量兑换申请列表
+  static async getBatchExchangeRequests(partnerId: string): Promise<BatchExchangeRequest[]> {
+    if (USE_MOCK_DATA) {
+      // 返回mock数据
+      return [
+        {
+          id: 'exchange-001',
+          partnerId,
+          requestedDays: 365,
+          cardCount: 1,
+          cardType: CardType.REGULAR,
+          status: 'pending',
+          reason: '补充年卡库存',
+          requestedAt: '2024-01-20T10:00:00Z'
+        },
+        {
+          id: 'exchange-002',
+          partnerId,
+          requestedDays: 150,
+          cardCount: 5,
+          cardType: CardType.BOUND,
+          status: 'approved',
+          reason: '月度批量兑换',
+          requestedAt: '2024-01-19T14:30:00Z',
+          processedAt: '2024-01-19T16:00:00Z',
+          processedBy: 'admin',
+          generatedCards: ['card-new-001', 'card-new-002', 'card-new-003', 'card-new-004', 'card-new-005']
+        }
+      ];
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/cards/batch-exchange-requests/${partnerId}`);
+      return response.json();
+    } catch (error) {
+      console.error('获取批量兑换申请失败:', error);
+      throw error;
+    }
+  }
+
+  // 审批批量兑换申请
+  static async processBatchExchangeRequest(
+    requestId: string,
+    approved: boolean,
+    processReason?: string,
+    operatorId?: string
+  ): Promise<void> {
+    if (USE_MOCK_DATA) {
+      return Promise.resolve();
+    }
+    
+    try {
+      await fetch(`${API_BASE_URL}/cards/batch-exchange-requests/${requestId}/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approved,
+          processReason,
+          operatorId
+        })
+      });
+    } catch (error) {
+      console.error('处理批量兑换申请失败:', error);
+      throw error;
+    }
+  }
 }
 
 export const CardService = new CardServiceClass();
