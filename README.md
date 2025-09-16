@@ -169,15 +169,43 @@ docker run -p 80:80 partner-system
 
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
+## 📚 文档资源
+
+### 快速导航
+- 📖 [安装配置指南](INSTALL.md) - 详细的环境搭建和配置说明
+- 🌿 [Git分支策略](BRANCH_STRATEGY.md) - 代码提交规范和分支管理
+- 📝 [版本更新日志](CHANGELOG.md) - 功能变更和版本历史
+
+### 完整文档体系
+- 🔧 **开发文档** - [docs/development/](docs/development/) 
+  - [开发指南](docs/development/DEVELOPMENT_GUIDE.md) - 完整开发规范和技术栈使用
+  - [API文档](docs/development/API_DOCUMENTATION.md) - 完整的接口文档和示例
+
+- 💼 **业务文档** - [docs/business/](docs/business/)
+  - [业务需求](docs/business/BUSINESS_REQUIREMENTS.md) - 详细业务规则和流程
+  - [架构设计](docs/business/ARCHITECTURE_DESIGN.md) - 系统架构和技术设计
+
+- 🚀 **部署文档** - [docs/deployment/](docs/deployment/)
+  - [部署指南](docs/deployment/DEPLOYMENT_GUIDE.md) - 完整部署方案和运维指南
+
+- 📋 **GitHub文档** - [docs/github/](docs/github/)
+  - GitHub仓库管理和推送指南
+
+### 文档索引
+完整的文档导航和使用指南请查看：[docs/README.md](docs/README.md)
+
 ## 📞 支持
 
-### 文档资源
-- 📖 [详细安装指南](INSTALL.md)
-- 🐛 [问题反馈](https://github.com/your-org/partner-system/issues)
-- 💬 [技术支持](support@your-domain.com)
+### 技术支持
+- 🐛 [问题反馈](https://github.com/DamingDong/partner_system/issues)
+- 💬 技术讨论：damingdong@example.com
+- 📋 [项目看板](https://github.com/DamingDong/partner_system/projects)
+
+### 贡献指南
+欢迎参与项目贡献！请查看[开发指南](docs/development/DEVELOPMENT_GUIDE.md)了解详细的开发规范。
 
 ---
 
-**技术栈**: React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
-# partner_system
-# partner_system
+**技术栈**: React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui  
+**维护者**: [Damingdong](https://github.com/DamingDong)  
+**项目地址**: https://github.com/DamingDong/partner_system
