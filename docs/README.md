@@ -34,6 +34,13 @@
   - 权益回收池接口
   - 错误码说明
 
+- **[TESTING_GUIDE.md](./development/TESTING_GUIDE.md)** - 测试配置指南
+  - Vitest测试框架配置
+  - 测试脚本和工具
+  - 测试文件结构规范
+  - 覆盖率要求和报告
+  - 测试最佳实践
+
 ### 💼 业务文档 (business/)
 - **[BUSINESS_REQUIREMENTS.md](./business/BUSINESS_REQUIREMENTS.md)** - 业务需求文档
   - 项目背景与目标
