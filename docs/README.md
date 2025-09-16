@@ -51,6 +51,26 @@
   - 安全架构设计
   - 性能架构设计
 
+- **[PRODUCT_REQUIREMENTS.md](./business/PRODUCT_REQUIREMENTS.md)** - 产品需求文档(PRD)
+  - 项目概述和产品定位
+  - 用户角色与权限系统
+  - 会员卡管理系统详细设计
+  - 分账管理系统规则引擎
+  - 对账管理系统流程
+  - 技术实现细节
+
+- **[BUSINESS_PROCESS_SUPPLEMENT.md](./business/BUSINESS_PROCESS_SUPPLEMENT.md)** - 业务流程补充
+  - 条件式分账业务流程
+  - 会员卡全生命周期流程
+  - 分账计算完整流程
+  - 异常处理机制
+
+- **[RECOVERY_POOL_ENHANCEMENT.md](./business/RECOVERY_POOL_ENHANCEMENT.md)** - 权益回收池功能增强
+  - 回收池管理系统设计
+  - 业务流程说明
+  - UI设计亮点
+  - 技术特点分析
+
 - **[权益回收池功能开发总结_2024_工作记忆.md](./business/权益回收池功能开发总结_2024_工作记忆.md)** - 权益回收池功能开发总结
   - 核心功能实现
   - 技术实现细节
