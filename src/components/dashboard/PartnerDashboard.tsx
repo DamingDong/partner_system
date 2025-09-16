@@ -121,9 +121,12 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
               variant="outline" 
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => window.location.href = '/cards'}
+              disabled
+              title="只有管理员可以导入卡片"
             >
-              <Plus className="h-6 w-6" />
-              <span>导入卡片</span>
+              <Plus className="h-6 w-6 text-muted-foreground" />
+              <span className="text-muted-foreground">导入卡片</span>
+              <span className="text-xs text-muted-foreground">(仅管理员)</span>
             </Button>
             
             <Button 

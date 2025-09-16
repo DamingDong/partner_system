@@ -390,6 +390,7 @@ export interface RedemptionRequest {
   daysRemaining: number;         // 剩余天数
   rewardType: 'monthly' | 'yearly'; // 兑换类型
   status: 'pending' | 'approved' | 'rejected'; // 状态
+  requestReason?: string;        // 申请原因
   requestedAt: string;           // 申请时间
   processedAt?: string;          // 处理时间
   processedBy?: string;          // 处理人
@@ -443,15 +444,15 @@ export interface RecoveryPoolRecord {
 export interface BatchExchangeRequest {
   id: string;                    // 申请ID
   partnerId: string;             // 合作伙伴ID
-  requestedDays: number;         // 申请兑换天数
+  totalDaysRequired: number;     // 需要的总天数
   cardCount: number;             // 申请卡数量
-  cardType: CardType;            // 卡类型
+  cardType: 'monthly' | 'yearly'; // 卡类型（月卡/年卡）
   status: 'pending' | 'approved' | 'rejected'; // 状态
   reason?: string;               // 申请原因
   processReason?: string;        // 处理原因
   requestedAt: string;           // 申请时间
   processedAt?: string;          // 处理时间
-  processedBy?: string;          // 处理人
+  operatorId?: string;           // 操作员ID
   generatedCards?: string[];     // 生成的卡片ID列表
 }
 

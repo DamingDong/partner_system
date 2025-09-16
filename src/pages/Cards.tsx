@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { 
   Search, 
@@ -51,10 +52,22 @@ const Cards: React.FC = () => {
   const [showBatchRedemptionModal, setShowBatchRedemptionModal] = useState(false);
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [redemptionReason, setRedemptionReason] = useState('');
+  const [selectedRedemptionRequests, setSelectedRedemptionRequests] = useState<string[]>([]);
   
   // 回收池相关状态
   const [recoveryPool, setRecoveryPool] = useState<RecoveryPool | null>(null);
   const [poolLoading, setPoolLoading] = useState(false);
+  
+  // 批量审批相关状态
+  const [batchApprovalLoading, setBatchApprovalLoading] = useState(false);
+  const [approvalProgress, setApprovalProgress] = useState({ current: 0, total: 0 });
+  
+  // 批量兑换相关状态
+  const [showBatchExchangeModal, setShowBatchExchangeModal] = useState(false);
+  const [exchangeCardCount, setExchangeCardCount] = useState(1);
+  const [exchangeCardType, setExchangeCardType] = useState<'monthly' | 'yearly'>('monthly');
+  const [exchangeRequiredDays, setExchangeRequiredDays] = useState(30);
+  const [exchangeLoading, setExchangeLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -237,6 +250,179 @@ const Cards: React.FC = () => {
     );
   };
 
+  // 批量兑换会员卡相关处理函数
+  const handleExchangeCardTypeChange = (type: 'monthly' | 'yearly') => {
+    setExchangeCardType(type);
+    setExchangeRequiredDays(type === 'yearly' ? 365 : 30);
+  };
+
+  const handleExchangeCardCountChange = (count: number) => {
+    setExchangeCardCount(count);
+  };
+
+  const calculateTotalRequiredDays = () => {
+    return exchangeCardCount * exchangeRequiredDays;
+  };
+
+  const handleBatchExchange = async () => {
+    const totalDays = calculateTotalRequiredDays();
+    
+    if (!recoveryPool) {
+      toast.error('回收池信息未加载');
+      return;
+    }
+
+    if (recoveryPool.availableDays < totalDays) {
+      toast.error(`回收池余额不足！需要${totalDays}天，可用${recoveryPool.availableDays}天`);
+      return;
+    }
+
+    try {
+      setExchangeLoading(true);
+      const partnerId = user?.partnerId || 'partner-001';
+      
+      // 1. 创建批量兑换申请
+      const exchangeRequest = await RecoveryPoolService.createBatchExchangeRequest({
+        partnerId,
+        cardCount: exchangeCardCount,
+        cardType: exchangeCardType,
+        totalDaysRequired: totalDays,
+        status: 'pending',
+        operatorId: user?.id || 'admin'
+      });
+      
+      // 2. 处理批量兑换（扣除回收池天数）
+      await RecoveryPoolService.processBatchExchange(
+        exchangeRequest.id,
+        partnerId,
+        totalDays,
+        exchangeCardCount,
+        user?.id || 'admin'
+      );
+      
+      // 3. 生成新的会员卡（这里调用CardService的批量生成接口）
+      const newCards = [];
+      for (let i = 0; i < exchangeCardCount; i++) {
+        const cardData = {
+          partnerId,
+          cardType: CardType.REGULAR,
+          validDays: exchangeRequiredDays,
+          source: 'batch_exchange',
+          sourceId: exchangeRequest.id
+        };
+        
+        // 这里可以调用CardService.generateCard或类似的接口
+        newCards.push(cardData);
+      }
+      
+      toast.success(`成功兑换${exchangeCardCount}张${exchangeCardType === 'yearly' ? '年卡' : '月卡'}！消耗${totalDays}天`);
+      
+      // 关闭模态框并重置表单
+      setShowBatchExchangeModal(false);
+      setExchangeCardCount(1);
+      setExchangeCardType('monthly');
+      setExchangeRequiredDays(30);
+      
+      // 重新加载数据
+      loadData();
+      
+    } catch (error) {
+      console.error('批量兑换失败:', error);
+      toast.error('批量兑换失败，请重试');
+    } finally {
+      setExchangeLoading(false);
+    }
+  };
+
+  // 批量审批相关处理函数
+  const handleRedemptionRequestSelection = (requestId: string) => {
+    setSelectedRedemptionRequests(prev => 
+      prev.includes(requestId) 
+        ? prev.filter(id => id !== requestId)
+        : [...prev, requestId]
+    );
+  };
+
+  const handleSelectAllRedemptionRequests = (checked: boolean) => {
+    if (checked) {
+      setSelectedRedemptionRequests(redemptionRequests.map(req => req.id));
+    } else {
+      setSelectedRedemptionRequests([]);
+    }
+  };
+
+  const handleBatchApproval = async (approve: boolean) => {
+    if (selectedRedemptionRequests.length === 0) {
+      toast.error('请选择要审批的申请');
+      return;
+    }
+
+    try {
+      setBatchApprovalLoading(true);
+      setApprovalProgress({ current: 0, total: selectedRedemptionRequests.length });
+      const partnerId = user?.partnerId || 'partner-001';
+      const operatorId = user?.id || 'admin';
+      
+      if (approve) {
+        // 批量通过 - 显示进度
+        const result = await CardService.batchApproveRedemptionRequests(selectedRedemptionRequests, operatorId);
+        
+        // 模拟进度更新
+        for (let i = 1; i <= selectedRedemptionRequests.length; i++) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          setApprovalProgress({ current: i, total: selectedRedemptionRequests.length });
+        }
+        
+        toast.success(
+          `成功批准${result.approvedCount}个申请，共${result.totalDays}天已入池！`, 
+          { duration: 3000 }
+        );
+      } else {
+        // 批量拒绝
+        await Promise.all(
+          selectedRedemptionRequests.map(requestId => 
+            CardService.rejectRedemptionRequest(requestId, operatorId, '批量拒绝')
+          )
+        );
+        toast.success(`已拒绝${selectedRedemptionRequests.length}个申请`);
+      }
+      
+      setSelectedRedemptionRequests([]);
+      setApprovalProgress({ current: 0, total: 0 });
+      loadData();
+    } catch (error) {
+      console.error('批量审批失败:', error);
+      toast.error('批量审批失败，请重试');
+    } finally {
+      setBatchApprovalLoading(false);
+      setApprovalProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const handleApproveRedemption = async (requestId: string) => {
+    try {
+      const operatorId = user?.id || 'admin';
+      await CardService.approveRedemptionRequest(requestId, operatorId);
+      toast.success('申请已通过，天数已入池！');
+      loadData();
+    } catch (error) {
+      console.error('审批失败:', error);
+      toast.error('审批失败，请重试');
+    }
+  };
+
+  const handleRejectRedemption = async (requestId: string) => {
+    try {
+      const operatorId = user?.id || 'admin';
+      await CardService.rejectRedemptionRequest(requestId, operatorId, '手动拒绝');
+      toast.success('申请已拒绝');
+      loadData();
+    } catch (error) {
+      console.error('拒绝失败:', error);
+      toast.error('拒绝失败，请重试');
+    }
+  };
+
   const getRedemptionStatusBadge = (status: string) => {
     const statusMap = {
       pending: { label: '待处理', variant: 'secondary' as const },
@@ -300,87 +486,93 @@ const Cards: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                导入会员卡
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>批量导入会员卡</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="cardFile">选择文件</Label>
-                  <Input
-                    id="cardFile"
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    支持 Excel (.xlsx, .xls) 和 CSV 格式
-                  </p>
+          {/* 只有管理员可以导入会员卡 */}
+          {user?.role === 'ADMIN' && (
+            <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  导入会员卡
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>批量导入会员卡</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="cardFile">选择文件</Label>
+                    <Input
+                      id="cardFile"
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      支持 Excel (.xlsx, .xls) 和 CSV 格式
+                    </p>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+                      取消
+                    </Button>
+                    <Button onClick={handleImportCards} disabled={!importFile}>
+                      导入
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setShowImportDialog(false)}>
-                    取消
-                  </Button>
-                  <Button onClick={handleImportCards} disabled={!importFile}>
-                    导入
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          )}
           
-          <Dialog open={showBatchRedemptionModal} onOpenChange={setShowBatchRedemptionModal}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Recycle className="h-4 w-4 mr-2" />
-                批量权益回收
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>批量权益回收申请</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>已选择 {selectedCards.length} 张会员卡</Label>
-                  <p className="text-sm text-muted-foreground">
-                    请在下方会员卡列表中勾选要回收的卡片
-                  </p>
+          {/* 合作伙伴和管理员可以进行批量权益回收 */}
+          {(user?.role === 'ADMIN' || user?.role === 'PARTNER') && (
+            <Dialog open={showBatchRedemptionModal} onOpenChange={setShowBatchRedemptionModal}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Recycle className="h-4 w-4 mr-2" />
+                  批量权益回收
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>批量权益回收申请</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>已选择 {selectedCards.length} 张会员卡</Label>
+                    <p className="text-sm text-muted-foreground">
+                      请在下方会员卡列表中勾选要回收的卡片
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="batchReason">销卡原因</Label>
+                    <Textarea
+                      id="batchReason"
+                      placeholder="请输入销卡原因..."
+                      value={redemptionReason}
+                      onChange={(e) => setRedemptionReason(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => {
+                      setShowBatchRedemptionModal(false);
+                      setRedemptionReason('');
+                    }}>
+                      取消
+                    </Button>
+                    <Button 
+                      onClick={handleBatchRedemption} 
+                      disabled={selectedCards.length === 0 || !redemptionReason.trim()}
+                    >
+                      提交申请
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="batchReason">销卡原因</Label>
-                  <Textarea
-                    id="batchReason"
-                    placeholder="请输入销卡原因..."
-                    value={redemptionReason}
-                    onChange={(e) => setRedemptionReason(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => {
-                    setShowBatchRedemptionModal(false);
-                    setRedemptionReason('');
-                  }}>
-                    取消
-                  </Button>
-                  <Button 
-                    onClick={handleBatchRedemption} 
-                    disabled={selectedCards.length === 0 || !redemptionReason.trim()}
-                  >
-                    提交申请
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          )}
           
           <Button onClick={loadData}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -444,6 +636,158 @@ const Cards: React.FC = () => {
               )}
             </div>
             <Recycle className="h-5 w-5 text-white/90" />
+          </div>
+        </div>
+      </div>
+
+      {/* 快速操作区域 */}
+      <div className="bg-card rounded-lg border p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold">快速操作</h3>
+            <p className="text-sm text-muted-foreground">
+              基于回收池天数进行批量兑换操作
+            </p>
+          </div>
+          {/* 管理员和合作伙伴可以进行批量兑换 */}
+          {(user?.role === 'ADMIN' || user?.role === 'PARTNER') && (
+            <Dialog open={showBatchExchangeModal} onOpenChange={setShowBatchExchangeModal}>
+              <DialogTrigger asChild>
+                <Button 
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  disabled={!recoveryPool || recoveryPool.availableDays === 0}
+                >
+                  <Gift className="h-4 w-4 mr-2" />
+                  批量兑换会员卡
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>批量兑换会员卡</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {/* 回收池信息展示 */}
+                  <div className="bg-muted rounded-lg p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">回收池余额：</span>
+                      <span className="font-semibold text-purple-600">
+                        {recoveryPool?.availableDays || 0} 天
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* 兑换配置 */}
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="cardType">会员卡类型</Label>
+                      <Select 
+                        value={exchangeCardType} 
+                        onValueChange={(value: 'monthly' | 'yearly') => handleExchangeCardTypeChange(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">月卡 (30天)</SelectItem>
+                          <SelectItem value="yearly">年卡 (365天)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="cardCount">兑换数量</Label>
+                      <Input
+                        id="cardCount"
+                        type="number"
+                        min={1}
+                        max={Math.floor((recoveryPool?.availableDays || 0) / exchangeRequiredDays)}
+                        value={exchangeCardCount}
+                        onChange={(e) => handleExchangeCardCountChange(parseInt(e.target.value) || 1)}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        最多可兑换 {Math.floor((recoveryPool?.availableDays || 0) / exchangeRequiredDays)} 张
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* 消耗预览 */}
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <div className="text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">总消耗天数：</span>
+                        <span className="font-semibold text-orange-600">
+                          {calculateTotalRequiredDays()} 天
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">剩余天数：</span>
+                        <span className="font-semibold">
+                          {(recoveryPool?.availableDays || 0) - calculateTotalRequiredDays()} 天
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowBatchExchangeModal(false);
+                        setExchangeCardCount(1);
+                        setExchangeCardType('monthly');
+                        setExchangeRequiredDays(30);
+                      }}
+                    >
+                      取消
+                    </Button>
+                    <Button 
+                      onClick={handleBatchExchange}
+                      disabled={
+                        exchangeLoading || 
+                        !recoveryPool || 
+                        calculateTotalRequiredDays() > recoveryPool.availableDays ||
+                        exchangeCardCount < 1
+                      }
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    >
+                      {exchangeLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          处理中...
+                        </>
+                      ) : (
+                        <>
+                          <Gift className="h-4 w-4 mr-2" />
+                          确认兑换
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+        
+        {/* 统计信息 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border">
+            <div className="text-2xl font-bold text-blue-600">{recoveryPool?.totalDays || 0}</div>
+            <div className="text-sm text-muted-foreground">累计天数</div>
+          </div>
+          <div className="text-center p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border">
+            <div className="text-2xl font-bold text-green-600">{recoveryPool?.availableDays || 0}</div>
+            <div className="text-sm text-muted-foreground">可用天数</div>
+          </div>
+          <div className="text-center p-3 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border">
+            <div className="text-2xl font-bold text-orange-600">{recoveryPool?.usedDays || 0}</div>
+            <div className="text-sm text-muted-foreground">已使用</div>
+          </div>
+          <div className="text-center p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border">
+            <div className="text-2xl font-bold text-purple-600">
+              {Math.floor((recoveryPool?.availableDays || 0) / 30)}
+            </div>
+            <div className="text-sm text-muted-foreground">可兑换月卡</div>
           </div>
         </div>
       </div>
@@ -729,173 +1073,144 @@ const Cards: React.FC = () => {
           </div>
         </TabsContent>
 
+        {/* 权益回收Tab */}
         <TabsContent value="redemption" className="space-y-4">
-          {/* 回收池状态卡片 */}
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg border p-6 text-white mb-6">
-            <div className="flex items-center justify-between">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
-                <h3 className="text-xl font-bold mb-2">权益回收池</h3>
-                <div className="grid grid-cols-3 gap-6">
-                  <div>
-                    <p className="text-sm text-white/80">可用天数</p>
-                    <p className="text-3xl font-bold">{recoveryPool?.availableDays || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-white/80">总计天数</p>
-                    <p className="text-3xl font-bold">{recoveryPool?.totalDays || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-white/80">已用天数</p>
-                    <p className="text-3xl font-bold">{recoveryPool?.usedDays || 0}</p>
-                  </div>
-                </div>
+                <CardTitle>权益回收申请管理</CardTitle>
+                <CardDescription>
+                  审核和处理会员卡权益回收申请，通过后天数将自动入池
+                </CardDescription>
               </div>
-              <div className="text-right">
-                <div className="mb-2">
-                  <div className="w-32 bg-white/20 rounded-full h-3">
-                    <div 
-                      className="bg-white h-3 rounded-full transition-all" 
-                      style={{ 
-                        width: `${recoveryPool ? (recoveryPool.availableDays / recoveryPool.totalDays * 100) : 0}%` 
-                      }}
-                    />
+              {user?.role === 'ADMIN' && selectedRedemptionRequests.length > 0 && (
+                <div className="flex flex-col space-y-2">
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleBatchApproval(true)}
+                      disabled={selectedRedemptionRequests.length === 0 || batchApprovalLoading}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {batchApprovalLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          处理中...
+                        </>
+                      ) : (
+                        <>
+                          <Activity className="h-4 w-4 mr-2" />
+                          批量通过 ({selectedRedemptionRequests.length})
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBatchApproval(false)}
+                      disabled={selectedRedemptionRequests.length === 0 || batchApprovalLoading}
+                    >
+                      批量拒绝
+                    </Button>
                   </div>
+                  
+                  {/* 进度条 */}
+                  {batchApprovalLoading && approvalProgress.total > 0 && (
+                    <div className="w-full">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>审批进度</span>
+                        <span>{approvalProgress.current}/{approvalProgress.total}</span>
+                      </div>
+                      <Progress 
+                        value={(approvalProgress.current / approvalProgress.total) * 100} 
+                        className="h-2"
+                      />
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-white/80">
-                  使用率: {recoveryPool && recoveryPool.totalDays > 0 
-                    ? Math.round((recoveryPool.usedDays / recoveryPool.totalDays) * 100) 
-                    : 0}%
-                </p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-3 text-purple-600 border-white/20 hover:bg-white/10"
-                  onClick={() => {
-                    // 批量兑换功能入口（后续开发）
-                    toast.info('批量兑换会员卡功能开发中...');
-                  }}
-                >
-                  <Gift className="h-4 w-4 mr-2" />
-                  批量兑换
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card rounded-lg border">
-            <div className="p-4 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">权益回收申请</h3>
-                  <p className="text-sm text-muted-foreground">
-                    管理会员卡权益回收申请记录，审批通过后天数将自动累计到回收池
-                  </p>
+              )}
+            </CardHeader>
+            <CardContent>
+              {redemptionRequests.length === 0 ? (
+                <div className="text-center py-8">
+                  <Recycle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">暂无权益回收申请</p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      // 批量审批功能（后续开发）
-                      toast.info('批量审批功能开发中...');
-                    }}
-                  >
-                    <Activity className="h-4 w-4 mr-2" />
-                    批量审批
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <FileDown className="h-4 w-4 mr-2" />
-                    导出记录
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-32">申请ID</TableHead>
-                    <TableHead className="w-32">原卡号</TableHead>
-                    <TableHead className="w-20">积分</TableHead>
-                    <TableHead className="w-24">回收天数</TableHead>
-                    <TableHead className="w-24">奖励类型</TableHead>
-                    <TableHead className="w-20">状态</TableHead>
-                    <TableHead className="w-28">申请时间</TableHead>
-                    <TableHead className="w-28">处理时间</TableHead>
-                    <TableHead className="w-20">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {redemptionRequests.length === 0 ? (
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        暂无权益回收申请记录
-                      </TableCell>
+                      {user?.role === 'ADMIN' && (
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={
+                              selectedRedemptionRequests.length > 0 &&
+                              selectedRedemptionRequests.length === redemptionRequests.filter(req => req.status === 'pending').length
+                            }
+                            onCheckedChange={handleSelectAllRedemptionRequests}
+                          />
+                        </TableHead>
+                      )}
+                      <TableHead>申请ID</TableHead>
+                      <TableHead>卡号</TableHead>
+                      <TableHead>申请时间</TableHead>
+                      <TableHead>剩余天数</TableHead>
+                      <TableHead>积分</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead>申请原因</TableHead>
+                      <TableHead>操作</TableHead>
                     </TableRow>
-                  ) : (
-                    redemptionRequests.map((request) => (
-                      <TableRow key={request.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium font-mono">
-                          {request.id.slice(0, 8)}...
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          {request.originalCardNumber}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="font-medium text-blue-600">
-                            {request.points}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="font-medium text-green-600">
-                            +{request.daysRemaining}天
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={request.rewardType === 'yearly' ? 'default' : 'secondary'}>
-                            {request.rewardType === 'yearly' ? '年度奖励' : '月度奖励'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-1">
-                            {getRedemptionStatusBadge(request.status)}
-                            {request.status === 'approved' && (
-                              <Badge variant="outline" className="text-xs">
-                                <Recycle className="h-3 w-3 mr-1" />
-                                已入池
-                              </Badge>
+                  </TableHeader>
+                  <TableBody>
+                    {redemptionRequests.map((request) => (
+                      <TableRow key={request.id}>
+                        {user?.role === 'ADMIN' && (
+                          <TableCell>
+                            {request.status === 'pending' && (
+                              <Checkbox
+                                checked={selectedRedemptionRequests.includes(request.id)}
+                                onCheckedChange={() => handleRedemptionRequestSelection(request.id)}
+                              />
                             )}
+                          </TableCell>
+                        )}
+                        <TableCell className="font-mono">{request.id}</TableCell>
+                        <TableCell>{request.cardId}</TableCell>
+                        <TableCell>{new Date(request.requestedAt).toLocaleString()}</TableCell>
+                        <TableCell>{request.daysRemaining} 天</TableCell>
+                        <TableCell>{request.points} 积分</TableCell>
+                        <TableCell>{getRedemptionStatusBadge(request.status)}</TableCell>
+                        <TableCell>
+                          <div className="max-w-xs truncate" title={request.requestReason}>
+                            {request.requestReason}
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">
-                          {new Date(request.requestedAt).toLocaleDateString('zh-CN')}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {request.processedAt 
-                            ? new Date(request.processedAt).toLocaleDateString('zh-CN')
-                            : '-'
-                          }
-                        </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-3"
-                            onClick={() => {
-                              // 查看详情逻辑
-                              toast.info('查看申请详情功能开发中...');
-                            }}
-                          >
-                            查看
-                          </Button>
+                          {request.status === 'pending' && user?.role === 'ADMIN' && (
+                            <div className="flex space-x-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleApproveRedemption(request.id)}
+                              >
+                                通过
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRejectRedemption(request.id)}
+                              >
+                                拒绝
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

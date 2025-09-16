@@ -205,13 +205,41 @@ export const partnerPermissions = [
   'dashboard:read',      // 仪表盘查看
   'cards:read',          // 会员卡查看
   'cards:write',         // 会员卡编辑（仅自己的）
-  'cards:import',        // 会员卡导入（仅自己的）
+  // 'cards:import',        // 会员卡导入权限已移除 - 仅管理员可导入
   'sharing:read',        // 分账查看（仅自己的）
   'reconciliation:read', // 对账单查看（仅自己的）
   'partners:read',       // 合作伙伴查看（仅自己的子伙伴）
   'reports:read',        // 报表查看（仅自己的数据）
   'settings:read'        // 基础设置查看
 ];
+
+// 权限检查工具函数
+export const hasPermission = (userRole: string, permission: string): boolean => {
+  if (userRole === 'ADMIN') {
+    return adminPermissions.includes(permission) || adminPermissions.includes('admin:all');
+  }
+  
+  if (userRole === 'PARTNER') {
+    return partnerPermissions.includes(permission);
+  }
+  
+  return false;
+};
+
+// 检查导入权限
+export const canImportCards = (userRole: string): boolean => {
+  return hasPermission(userRole, 'cards:import');
+};
+
+// 检查权益回收权限
+export const canRecoverRights = (userRole: string): boolean => {
+  return userRole === 'ADMIN' || userRole === 'PARTNER';
+};
+
+// 检查批量审批权限
+export const canBatchApprove = (userRole: string): boolean => {
+  return userRole === 'ADMIN';
+};
 
 // 管理员Dashboard数据
 export const mockAdminDashboardData: DashboardData = {
