@@ -9,8 +9,9 @@
 
 1. **会员卡管理复杂性**：大量会员卡的导入、激活、状态跟踪
 2. **合作伙伴业绩跟踪**：多渠道合作伙伴的业绩统计和分析
-3. **收益分成管理**：复杂的分成规则和结算流程
-4. **权益回收处理**：退卡、换卡等权益回收的统一管理
+3. **订单管理复杂性**：激活订单和订阅订单的统一管理、查询和导出
+4. **收益分成管理**：复杂的分成规则和结算流程
+5. **权益回收处理**：退卡、换卡等权益回收的统一管理
 
 ### 目标用户
 - **系统管理员**：拥有完整系统访问权限，负责系统配置和数据管理
@@ -59,7 +60,51 @@ flowchart TD
     M --> N[更新池状态]
 ```
 
-### 分账结算流程
+### 订单管理业务流程
+
+```mermaid
+flowchart TD
+    A[用户激活会员卡] --> B[生成激活订单]
+    B --> C[订单状态: PENDING]
+    C --> D{激活成功?}
+    D -->|成功| E[订单状态: COMPLETED]
+    D -->|失败| F[订单状态: FAILED]
+    E --> G[计算分成金额]
+    G --> H[生成分成记录]
+    
+    I[用户订阅/续费] --> J[生成订阅订单]
+    J --> K[订单状态: PENDING]
+    K --> L{支付成功?}
+    L -->|成功| M[订单状态: COMPLETED]
+    L -->|失败| N[订单状态: FAILED]
+    M --> O[计算分成金额]
+    O --> P[生成分成记录]
+```
+
+### 订单查询与导出流程
+
+```mermaid
+sequenceDiagram
+    participant Partner as 合作伙伴
+    participant Frontend as 前端页面
+    participant API as API服务
+    participant DB as 数据库
+    
+    Partner->>Frontend: 访问订单管理页面
+    Frontend->>API: 请求订单列表
+    API->>DB: 查询合作伙伴相关订单
+    DB-->>API: 返回订单数据
+    API-->>Frontend: 返回分页订单列表
+    Frontend-->>Partner: 显示订单列表
+    
+    Partner->>Frontend: 点击导出Excel
+    Frontend->>API: 请求导出数据
+    API->>DB: 查询完整订单数据
+    DB-->>API: 返回所有订单
+    API->>API: 生成Excel文件
+    API-->>Frontend: 返回Excel文件下载链接
+    Frontend-->>Partner: 自动下载文件
+```
 
 ```mermaid
 sequenceDiagram
@@ -104,10 +149,127 @@ sequenceDiagram
 | 合作伙伴管理 | ✅ | ❌ | ❌ |
 | 分成管理 | ✅ | ✅(查看) | ❌ |
 | 对账管理 | ✅ | ✅(查看) | ❌ |
+| 订单查看 | ✅ | ✅(限自己) | ❌ |
+| 订单导出 | ✅ | ✅(限自己) | ❌ |
+| 订单统计 | ✅ | ✅(限自己) | ❌ |
 | 系统设置 | ✅ | ❌ | ❌ |
 | 权益审批 | ✅ | ❌ | ❌ |
 
-## 💳 会员卡业务规则
+## 💼 订单管理业务规则
+
+### 订单类型定义
+
+#### 激活订单 (ACTIVATION)
+- **触发条件**：用户成功激活会员卡
+- **订单金额**：会员卡面值或实际支付金额
+- **分成计算**：按照合作伙伴的激活分成比例计算
+- **结算时机**：激活成功后即时生成
+
+#### 订阅订单 (SUBSCRIPTION)
+- **触发条件**：用户购买订阅服务或续费
+- **订单金额**：订阅服务的实际支付金额
+- **分成计算**：按照合作伙伴的订阅分成比例计算
+- **结算时机**：支付成功后即时生成
+
+### 订单状态管理
+
+```typescript
+interface OrderStateTransition {
+  // 状态转换规则
+  transitions: {
+    PENDING: ['PROCESSING', 'CANCELLED']
+    PROCESSING: ['COMPLETED', 'FAILED']
+    COMPLETED: ['REFUNDED']  // 仅特殊情况
+    FAILED: ['PENDING']      // 可重试
+    CANCELLED: []            // 终态
+    REFUNDED: []             // 终态
+  }
+  
+  // 状态转换条件
+  conditions: {
+    toPROCESSING: '已验证订单信息'
+    toCOMPLETED: '交易成功且服务已激活'
+    toFAILED: '交易失败或服务激活失败'
+    toCANCELLED: '用户取消或超时取消'
+    toREFUNDED: '管理员审批通过的退款申请'
+  }
+}
+```
+
+### 订单查询规则
+
+#### 数据权限控制
+```typescript
+interface OrderQueryPermissions {
+  admin: {
+    scope: 'all'           // 可查看所有订单
+    filters: ['partnerId', 'orderType', 'status', 'dateRange']
+  }
+  partner: {
+    scope: 'own'           // 仅可查看自己相关订单
+    filters: ['orderType', 'status', 'dateRange']
+    autoFilter: 'partnerId = currentUser.partnerId'
+  }
+  user: {
+    scope: 'none'          // 无查询权限
+  }
+}
+```
+
+#### 查询性能优化
+- **分页限制**：单次最多返回100条记录
+- **索引优化**：partnerId + createdAt 复合索引
+- **缓存策略**：热点数据5分钟缓存
+- **异步导出**：大数据量导出使用异步处理
+
+### Excel导出业务规则
+
+#### 导出数据结构
+```typescript
+interface ExportOrderData {
+  // 基本信息
+  orderNumber: string       // 订单编号
+  orderType: string        // 订单类型
+  partnerName: string      // 合作伙伴名称
+  cardNumber?: string      // 会员卡号(激活订单)
+  phone?: string          // 用户手机号
+  
+  // 金额信息
+  orderAmount: number      // 订单金额
+  commissionRate: string   // 分成比例(百分比)
+  commissionAmount: number // 分成金额
+  actualAmount: number     // 实际到账金额
+  fees: string            // 费用明细
+  
+  // 时间信息
+  orderDate: string       // 订单创建时间
+  completedDate?: string  // 订单完成时间
+  settlementDate?: string // 结算时间
+  
+  // 状态信息
+  status: string          // 订单状态
+  statusDesc: string      // 状态描述
+}
+```
+
+#### 导出限制规则
+- **数据范围**：最多导出近12个月的订单数据
+- **文件大小**：单个文件最多50MB，超过则分批导出
+- **导出频率**：每个用户每小时最多可导出5次
+- **文件保留**：导出文件保留30天，超过自动清理
+
+#### 导出文件格式
+```typescript
+interface ExportFileFormat {
+  filename: string         // 文件名格式: 订单导出_合作伙伴名_YYYYMMDD_HHMMSS.xlsx
+  sheets: {
+    summary: '订单汇总'  // 第一个工作表：统计信息
+    details: '订单明细'  // 第二个工作表：详细数据
+  }
+  encoding: 'UTF-8'        // 编码格式
+  dateFormat: 'YYYY-MM-DD HH:mm:ss' // 日期格式
+}
+```
 
 ### 卡类型定义
 

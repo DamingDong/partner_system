@@ -15,6 +15,7 @@ import Reconciliation from '@/pages/Reconciliation';
 import Partners from '@/pages/Partners';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
+import { Orders } from '@/pages/Orders';
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => {
             >
               <Route index element={<Dashboard />} />
               <Route path="cards" element={<Cards />} />
+              <Route path="orders" element={<Orders />} />
               <Route path="revenue-sharing" element={<RevenueSharing />} />
               <Route path="reconciliation" element={<Reconciliation />} />
               <Route path="partners" element={<Partners />} />

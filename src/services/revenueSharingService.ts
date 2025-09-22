@@ -6,13 +6,16 @@ import {
   OrderType
 } from '@/types';
 import { 
+  mockSharingRecords,
+  mockSharingRules,
+  mockSharingStats,
   getSharingRecordsForPartner,
   getSharingRulesForPartner,
   getSharingStatsForPartner
 } from '@/lib/mock-data-sharing';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK === 'true' || true;
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 export class RevenueSharingService {
   // 获取我的分账记录（收到的分账）
@@ -23,7 +26,14 @@ export class RevenueSharingService {
     pageSize: number = 20
   ): Promise<PaginatedResponse<SharingRecord>> {
     if (USE_MOCK_DATA) {
-      const records = getSharingRecordsForPartner(partnerId, 'received');
+      let records: SharingRecord[] = [];
+      if (partnerId === 'all') {
+        // 管理员可以看到所有分账记录
+        records = [...mockSharingRecords];
+      } else {
+        // 合作伙伴只能看到自己的分账记录
+        records = mockSharingRecords.filter(record => record.toPartnerId === partnerId);
+      }
       return {
         data: records.slice((page - 1) * pageSize, page * pageSize),
         total: records.length,
@@ -50,7 +60,14 @@ export class RevenueSharingService {
     pageSize: number = 20
   ): Promise<PaginatedResponse<SharingRecord>> {
     if (USE_MOCK_DATA) {
-      const records = getSharingRecordsForPartner(partnerId, 'paid');
+      let records: SharingRecord[] = [];
+      if (partnerId === 'all') {
+        // 管理员可以看到所有分账记录
+        records = [...mockSharingRecords];
+      } else {
+        // 合作伙伴只能看到自己的分账记录
+        records = mockSharingRecords.filter(record => record.fromPartnerId === partnerId);
+      }
       return {
         data: records.slice((page - 1) * pageSize, page * pageSize),
         total: records.length,
@@ -72,7 +89,13 @@ export class RevenueSharingService {
   // 获取分账规则
   static async getSharingRules(partnerId: string): Promise<SharingRule[]> {
     if (USE_MOCK_DATA) {
-      return getSharingRulesForPartner(partnerId);
+      if (partnerId === 'all') {
+        // 管理员可以看到所有分账规则
+        return [...mockSharingRules];
+      } else {
+        // 合作伙伴只能看到自己的分账规则
+        return mockSharingRules.filter(rule => rule.partnerId === partnerId);
+      }
     }
     
     try {
@@ -157,7 +180,19 @@ export class RevenueSharingService {
     sharingCount: number;
   }> {
     if (USE_MOCK_DATA) {
-      return getSharingStatsForPartner(partnerId);
+      if (partnerId === 'all') {
+        // 管理员可以看到所有分账统计的汇总
+        const allStats = Object.values(mockSharingStats).filter(stat => stat !== mockSharingStats.default);
+        return {
+          totalSharing: allStats.reduce((sum, stat) => sum + stat.totalSharing, 0),
+          totalReceived: allStats.reduce((sum, stat) => sum + stat.totalReceived, 0),
+          totalPaid: allStats.reduce((sum, stat) => sum + stat.totalPaid, 0),
+          sharingCount: allStats.reduce((sum, stat) => sum + stat.sharingCount, 0),
+        };
+      } else {
+        // 合作伙伴只能看到自己的分账统计
+        return getSharingStatsForPartner(partnerId);
+      }
     }
     
     try {

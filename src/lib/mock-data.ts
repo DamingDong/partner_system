@@ -14,7 +14,11 @@ import {
   ReconciliationStatus,
   TransactionType,
   TransactionStatus,
-  BindingType
+  BindingType,
+  Order,
+  OrderType,
+  OrderStatus,
+  OrderFee
 } from '@/types';
 
 // Mock user data - 管理员账号
@@ -172,6 +176,197 @@ export const mockDashboardData: DashboardData = {
   ],
 };
 
+// Mock orders data for partner
+export const mockPartnerOrders: Order[] = [
+  {
+    id: 'order-001',
+    orderNumber: 'ORD20240115001',
+    orderType: OrderType.ACTIVATION,
+    partnerId: 'partner-001',
+    partnerName: '王代理',
+    cardId: '1',
+    cardNumber: 'MC001234567890',
+    phone: '13800138001',
+    orderAmount: 199.00,
+    commissionRate: 0.1,
+    commissionAmount: 19.90,
+    actualAmount: 179.10,
+    fees: [
+      {
+        type: 'platform',
+        amount: 5.00,
+        description: '平台服务费'
+      },
+      {
+        type: 'payment',
+        amount: 3.00,
+        description: '支付手续费'
+      }
+    ],
+    status: OrderStatus.COMPLETED,
+    statusDesc: '已完成',
+    paymentInfo: {
+      paymentMethod: 'alipay',
+      paymentChannel: 'scan_pay',
+      transactionId: 'tx-20240115001',
+      paymentTime: '2024-01-15T10:30:00Z',
+      paymentAmount: 199.00
+    },
+    createdAt: '2024-01-15T10:25:00Z',
+    completedAt: '2024-01-15T10:30:00Z',
+    settlementAt: '2024-01-16T00:00:00Z',
+    updatedAt: '2024-01-15T10:30:00Z'
+  },
+  {
+    id: 'order-002',
+    orderNumber: 'ORD20240116001',
+    orderType: OrderType.ACTIVATION,
+    partnerId: 'partner-001',
+    partnerName: '王代理',
+    cardId: '2',
+    cardNumber: 'MC001234567891',
+    phone: '13800138002',
+    orderAmount: 299.00,
+    commissionRate: 0.1,
+    commissionAmount: 29.90,
+    actualAmount: 269.10,
+    fees: [
+      {
+        type: 'platform',
+        amount: 5.00,
+        description: '平台服务费'
+      },
+      {
+        type: 'payment',
+        amount: 3.00,
+        description: '支付手续费'
+      }
+    ],
+    status: OrderStatus.PROCESSING,
+    statusDesc: '处理中',
+    paymentInfo: {
+      paymentMethod: 'wechat',
+      paymentChannel: 'app_pay',
+      transactionId: 'tx-20240116001',
+      paymentTime: '2024-01-16T14:20:00Z',
+      paymentAmount: 299.00
+    },
+    createdAt: '2024-01-16T14:15:00Z',
+    updatedAt: '2024-01-16T14:20:00Z'
+  },
+  {
+    id: 'order-003',
+    orderNumber: 'ORD20240117001',
+    orderType: OrderType.SUBSCRIPTION,
+    partnerId: 'partner-001',
+    partnerName: '王代理',
+    userId: 'user-001',
+    phone: '13800138003',
+    orderAmount: 99.00,
+    commissionRate: 0.1,
+    commissionAmount: 9.90,
+    actualAmount: 89.10,
+    fees: [
+      {
+        type: 'platform',
+        amount: 3.00,
+        description: '平台服务费'
+      },
+      {
+        type: 'payment',
+        amount: 2.00,
+        description: '支付手续费'
+      }
+    ],
+    status: OrderStatus.COMPLETED,
+    statusDesc: '已完成',
+    paymentInfo: {
+      paymentMethod: 'alipay',
+      paymentChannel: 'scan_pay',
+      transactionId: 'tx-20240117001',
+      paymentTime: '2024-01-17T09:45:00Z',
+      paymentAmount: 99.00
+    },
+    createdAt: '2024-01-17T09:40:00Z',
+    completedAt: '2024-01-17T09:45:00Z',
+    settlementAt: '2024-01-18T00:00:00Z',
+    updatedAt: '2024-01-17T09:45:00Z'
+  }
+];
+
+// Mock orders data for admin (includes all partners' orders)
+export const mockAdminOrders: Order[] = [
+  ...mockPartnerOrders,
+  {
+    id: 'order-004',
+    orderNumber: 'ORD20240118001',
+    orderType: OrderType.ACTIVATION,
+    partnerId: 'partner-002',
+    partnerName: '李代理',
+    cardId: '3',
+    cardNumber: 'MC001234567892',
+    phone: '13800138004',
+    orderAmount: 199.00,
+    commissionRate: 0.15,
+    commissionAmount: 29.85,
+    actualAmount: 169.15,
+    fees: [
+      {
+        type: 'platform',
+        amount: 5.00,
+        description: '平台服务费'
+      },
+      {
+        type: 'payment',
+        amount: 3.00,
+        description: '支付手续费'
+      }
+    ],
+    status: OrderStatus.COMPLETED,
+    statusDesc: '已完成',
+    paymentInfo: {
+      paymentMethod: 'alipay',
+      paymentChannel: 'scan_pay',
+      transactionId: 'tx-20240118001',
+      paymentTime: '2024-01-18T11:30:00Z',
+      paymentAmount: 199.00
+    },
+    createdAt: '2024-01-18T11:25:00Z',
+    completedAt: '2024-01-18T11:30:00Z',
+    settlementAt: '2024-01-19T00:00:00Z',
+    updatedAt: '2024-01-18T11:30:00Z'
+  },
+  {
+    id: 'order-005',
+    orderNumber: 'ORD20240119001',
+    orderType: OrderType.SUBSCRIPTION,
+    partnerId: 'partner-003',
+    partnerName: '张代理',
+    userId: 'user-002',
+    phone: '13800138005',
+    orderAmount: 199.00,
+    commissionRate: 0.08,
+    commissionAmount: 15.92,
+    actualAmount: 183.08,
+    fees: [
+      {
+        type: 'platform',
+        amount: 5.00,
+        description: '平台服务费'
+      },
+      {
+        type: 'payment',
+        amount: 3.00,
+        description: '支付手续费'
+      }
+    ],
+    status: OrderStatus.FAILED,
+    statusDesc: '支付失败',
+    createdAt: '2024-01-19T16:20:00Z',
+    updatedAt: '2024-01-19T16:25:00Z'
+  }
+];
+
 // 管理员权限配置
 export const adminPermissions = [
   'admin:all',           // 管理员全权限
@@ -206,6 +401,7 @@ export const partnerPermissions = [
   'cards:read',          // 会员卡查看
   'cards:write',         // 会员卡编辑（仅自己的）
   // 'cards:import',        // 会员卡导入权限已移除 - 仅管理员可导入
+  'orders:read',         // 订单查看（仅自己的）
   'sharing:read',        // 分账查看（仅自己的）
   'reconciliation:read', // 对账单查看（仅自己的）
   'partners:read',       // 合作伙伴查看（仅自己的子伙伴）
@@ -373,6 +569,50 @@ export const mockApiResponses = {
       pageSize: 20,
       totalPages: 1,
     },
+  },
+  
+  // 订单列表响应 - 合作伙伴视角
+  partnerOrders: {
+    success: true,
+    data: {
+      orders: mockPartnerOrders,
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: mockPartnerOrders.length,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+      summary: {
+        totalOrders: mockPartnerOrders.length,
+        totalAmount: mockPartnerOrders.reduce((sum, order) => sum + order.orderAmount, 0),
+        totalCommission: mockPartnerOrders.reduce((sum, order) => sum + order.commissionAmount, 0),
+        totalActualAmount: mockPartnerOrders.reduce((sum, order) => sum + order.actualAmount, 0),
+      }
+    }
+  },
+  
+  // 订单列表响应 - 管理员视角
+  adminOrders: {
+    success: true,
+    data: {
+      orders: mockAdminOrders,
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: mockAdminOrders.length,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+      summary: {
+        totalOrders: mockAdminOrders.length,
+        totalAmount: mockAdminOrders.reduce((sum, order) => sum + order.orderAmount, 0),
+        totalCommission: mockAdminOrders.reduce((sum, order) => sum + order.commissionAmount, 0),
+        totalActualAmount: mockAdminOrders.reduce((sum, order) => sum + order.actualAmount, 0),
+      }
+    }
   },
   
   // 管理员Dashboard数据

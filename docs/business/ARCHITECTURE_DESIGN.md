@@ -212,6 +212,112 @@ export class CardService extends BaseService {
     }
   }
 }
+
+// 订单管理服务实现
+export class OrderService extends BaseService {
+  // 获取订单列表 - 支持合作伙伴数据隔离
+  static async getOrders(partnerId: string, filters?: OrderFilters): Promise<PaginatedResult<Order>> {
+    // 权限检查：合作伙伴只能查看自己的订单
+    this.validatePartnerAccess(partnerId)
+    
+    try {
+      const response = await this.apiClient.get(`/orders/${partnerId}`, {
+        params: {
+          ...filters,
+          page: filters?.page || 1,
+          limit: Math.min(filters?.limit || 20, 100) // 限制单次查询数量
+        }
+      })
+      return this.transformResponse<PaginatedResult<Order>>(response)
+    } catch (error) {
+      this.handleError(error)
+    }
+  }
+  
+  // 获取订单详情
+  static async getOrderDetail(orderId: string): Promise<OrderDetail> {
+    try {
+      const response = await this.apiClient.get(`/orders/detail/${orderId}`)
+      const orderDetail = this.transformResponse<OrderDetail>(response)
+      
+      // 权限检查：确保用户只能查看自己相关的订单
+      this.validateOrderAccess(orderDetail)
+      
+      return orderDetail
+    } catch (error) {
+      this.handleError(error)
+    }
+  }
+  
+  // 导出订单数据 - 异步处理大数据量
+  static async exportOrders(partnerId: string, exportRequest: OrderExportRequest): Promise<ExportTask> {
+    this.validatePartnerAccess(partnerId)
+    this.validateExportPermission()
+    
+    try {
+      const response = await this.apiClient.post(`/orders/${partnerId}/export`, exportRequest)
+      return this.transformResponse<ExportTask>(response)
+    } catch (error) {
+      this.handleError(error)
+    }
+  }
+  
+  // 获取导出任务状态
+  static async getExportStatus(exportId: string): Promise<ExportTaskStatus> {
+    try {
+      const response = await this.apiClient.get(`/orders/export/${exportId}/status`)
+      return this.transformResponse<ExportTaskStatus>(response)
+    } catch (error) {
+      this.handleError(error)
+    }
+  }
+  
+  // 获取订单统计数据
+  static async getOrderStats(partnerId: string, period: StatsPeriod): Promise<OrderStats> {
+    this.validatePartnerAccess(partnerId)
+    
+    try {
+      const response = await this.apiClient.get(`/orders/${partnerId}/stats`, {
+        params: { period }
+      })
+      return this.transformResponse<OrderStats>(response)
+    } catch (error) {
+      this.handleError(error)
+    }
+  }
+  
+  // 内部方法：验证合作伙伴访问权限
+  private static validatePartnerAccess(partnerId: string): void {
+    const { user, isAdmin } = useAuthStore.getState()
+    
+    if (!isAdmin && user?.partnerId !== partnerId) {
+      throw new PermissionError('无权访问其他合作伙伴的订单数据')
+    }
+  }
+  
+  // 内部方法：验证订单访问权限
+  private static validateOrderAccess(orderDetail: OrderDetail): void {
+    const { user, isAdmin } = useAuthStore.getState()
+    
+    if (!isAdmin && user?.partnerId !== orderDetail.partnerId) {
+      throw new PermissionError('无权查看该订单详情')
+    }
+  }
+  
+  // 内部方法：验证导出权限
+  private static validateExportPermission(): void {
+    // 检查导出频率限制
+    const lastExportTime = localStorage.getItem('lastOrderExportTime')
+    const now = Date.now()
+    const oneHour = 60 * 60 * 1000
+    
+    if (lastExportTime && (now - parseInt(lastExportTime)) < oneHour) {
+      throw new RateLimitError('导出频率过高，请稍后再试')
+    }
+    
+    localStorage.setItem('lastOrderExportTime', now.toString())
+  }
+}
 ```
 
 #### 权限控制架构
@@ -226,6 +332,11 @@ interface PermissionSystem {
     'cards:import': '导入会员卡'  // 仅管理员
     'partners:read': '查看合作伙伴'
     'partners:write': '编辑合作伙伴'
+    'orders:read': '查看订单'
+    'orders:export': '导出订单'
+    'orders:stats': '查看订单统计'
+    'revenue:read': '查看分成数据'
+    'reconciliation:read': '查看对账数据'
   }
   
   // 角色权限映射
@@ -331,6 +442,8 @@ interface MockDataSystem {
     generateCards: (count: number, partnerId: string) => Card[]
     generateSharingRecords: (partnerId: string, dateRange: DateRange) => SharingRecord[]
     generateRecoveryPool: (partnerId: string) => RecoveryPool
+    generateOrders: (partnerId: string, count: number, dateRange: DateRange) => Order[]
+    generateOrderStats: (partnerId: string, period: StatsPeriod) => OrderStats
   }
   
   // 环境切换
@@ -386,6 +499,8 @@ interface AuthState {
   isAdmin: boolean
   isPartner: boolean
   canImportCards: boolean  // 重要：导入权限检查
+  canExportOrders: boolean // 新增：订单导出权限检查
+  canViewAllOrders: boolean // 新增：查看所有订单权限
   
   // 状态操作
   login: (authData: AuthResponse) => void
@@ -417,6 +532,14 @@ export const useAuthStore = create<AuthState>()(
       
       get canImportCards() {
         return get().hasPermission('cards:import')
+      },
+      
+      get canExportOrders() {
+        return get().hasPermission('orders:export')
+      },
+      
+      get canViewAllOrders() {
+        return get().isAdmin || get().hasPermission('orders:read')
       },
       
       // 状态操作实现
@@ -465,10 +588,11 @@ interface ModuleDependencies {
   business: {
     cards: ['core/api', 'core/auth']
     partners: ['core/api', 'core/auth'] 
-    dashboard: ['cards', 'partners', 'revenue-sharing']
+    dashboard: ['cards', 'partners', 'revenue-sharing', 'orders']
     'revenue-sharing': ['core/api', 'core/auth']
     reconciliation: ['core/api', 'core/auth']
     'recovery-pool': ['cards', 'core/api', 'core/auth']
+    orders: ['core/api', 'core/auth', 'cards']  // 新增订单模块
   }
   
   // UI模块
@@ -810,7 +934,8 @@ export default defineConfig({
           
           // 业务模块
           'business-cards': ['./src/services/cardService.ts', './src/pages/Cards.tsx'],
-          'business-dashboard': ['./src/services/dashboardService.ts', './src/pages/Dashboard.tsx']
+          'business-dashboard': ['./src/services/dashboardService.ts', './src/pages/Dashboard.tsx'],
+          'business-orders': ['./src/services/orderService.ts', './src/pages/Orders.tsx']
         }
       }
     },

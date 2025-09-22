@@ -40,6 +40,12 @@ const navigation = [
     permission: 'cards:read',
   },
   {
+    name: '订单管理',
+    href: '/orders',
+    icon: FileText,
+    permission: 'orders:read',
+  },
+  {
     name: '分账管理',
     href: '/revenue-sharing',
     icon: PieChart,

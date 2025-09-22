@@ -70,15 +70,15 @@ export default function RevenueSharing() {
   const [selectedRecord, setSelectedRecord] = useState<SharingRecord | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
-  const { user } = useAuthStore();
+  const { user, isAdmin } = useAuthStore();
 
   // 数据加载函数
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       
-      // 如果是管理员，使用默认的partnerId
-      const partnerId = user?.partnerId || 'partner-001';
+      // 如果是管理员，使用管理员ID，否则使用用户关联的partnerId
+      const partnerId = isAdmin ? 'all' : (user?.partnerId || 'partner-001');
       
       // 并行加载所有数据
       const [myResponse, downstreamResponse, rulesResponse, statsResponse, activationResponse, subscriptionResponse] = await Promise.all([
@@ -93,8 +93,8 @@ export default function RevenueSharing() {
       setMySharing(myResponse.data || []);
       setDownstreamSharing(downstreamResponse.data || []);
       setSharingRules(rulesResponse || []);
-      setActivationOrders(activationResponse.data || []);
-      setSubscriptionOrders(subscriptionResponse.data || []);
+      setActivationOrders(activationResponse.orders || []);
+      setSubscriptionOrders(subscriptionResponse.orders || []);
       setStats({
         totalSharing: statsResponse.totalSharing || 0,
         totalReceived: statsResponse.totalReceived || 0,
@@ -347,7 +347,7 @@ export default function RevenueSharing() {
                       <div>
                         <p className="font-medium">{order.orderNumber}</p>
                         <p className="text-sm text-gray-600">
-                          金额: ¥{order.amount.toLocaleString()}
+                          金额: ¥{order.orderAmount.toLocaleString()}
                         </p>
                         <p className="text-xs text-gray-500">
                           {new Date(order.createdAt).toLocaleString()}
@@ -395,7 +395,7 @@ export default function RevenueSharing() {
                       <div>
                         <p className="font-medium">{order.orderNumber}</p>
                         <p className="text-sm text-gray-600">
-                          金额: ¥{order.amount.toLocaleString()}
+                          金额: ¥{order.orderAmount.toLocaleString()}
                         </p>
                         <p className="text-xs text-gray-500">
                           {new Date(order.createdAt).toLocaleString()}

@@ -28,6 +28,9 @@ interface AuthState {
   refreshToken: string | null;
   permissions: string[];
   isAuthenticated: boolean;
+  // 派生状态
+  isAdmin: boolean;
+  isPartner: boolean;
   login: (authData: AuthResponse) => void;
   logout: () => void;
   register: (userData: any) => Promise<boolean>;
@@ -43,6 +46,15 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: isDevelopment ? 'mock-refresh-token' : null,
       permissions: getDefaultPermissions(getDefaultUser()),
       isAuthenticated: getDefaultIsAuthenticated(),
+
+      // 派生状态
+      get isAdmin() {
+        return get().user?.role === 'ADMIN';
+      },
+      
+      get isPartner() {
+        return get().user?.role === 'PARTNER';
+      },
 
       login: (authData: AuthResponse) => {
         set({
