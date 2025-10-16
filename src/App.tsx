@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Layout } from '@/components/layout/Layout';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
@@ -16,6 +17,7 @@ import Partners from '@/pages/Partners';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import { Orders } from '@/pages/Orders';
+import { PERMISSIONS } from '@/types/permissions';
 
 const queryClient = new QueryClient();
 
@@ -48,7 +50,11 @@ const App = () => {
               }
             >
               <Route index element={<Dashboard />} />
-              <Route path="cards" element={<Cards />} />
+              <Route path="cards" element={
+                <ProtectedRoute requiredPermission={PERMISSIONS.CARDS_IMPORT}>
+                  <Cards />
+                </ProtectedRoute>
+              } />
               <Route path="orders" element={<Orders />} />
               <Route path="revenue-sharing" element={<RevenueSharing />} />
               <Route path="reconciliation" element={<Reconciliation />} />
@@ -63,7 +69,6 @@ const App = () => {
         </BrowserRouter>
       </ErrorBoundary>
     </TooltipProvider>
-  </QueryClientProvider>
   );
 };
 
