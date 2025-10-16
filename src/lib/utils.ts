@@ -161,3 +161,12 @@ export function throttle<T extends (...args: any[]) => any>(
     }
   };
 }
+
+/**
+ * 格式化数字
+ * @param num 要格式化的数字
+ * @returns 格式化后的字符串
+ */
+export function formatNumber(num: number): string {
+  return new Intl.NumberFormat('zh-CN').format(num)
+}

@@ -33,7 +33,8 @@ export const useOrders = (partnerId: string, filters?: Partial<OrderFilters>) =>
 
   // 构建查询参数
   const queryParams: OrderQueryParams = useMemo(() => ({
-    ...pagination,
+    page: pagination.page,
+    limit: pagination.limit,
     ...currentFilters,
     partnerId
   }), [pagination, currentFilters, partnerId]);
@@ -56,12 +57,17 @@ export const useOrders = (partnerId: string, filters?: Partial<OrderFilters>) =>
     queryKey,
     queryFn: async () => {
       console.log('Fetching orders with params:', queryParams);
-      // 使用Mock数据
-      if (import.meta.env.VITE_USE_MOCK_DATA === 'true') {
-        const { MockOrderService } = await import('../lib/mock-order-service');
-        return MockOrderService.getOrders(partnerId, queryParams);
+      try {
+        // 使用Mock数据
+        if (import.meta.env.VITE_USE_MOCK_DATA === 'true') {
+          const { MockOrderService } = await import('../lib/mock-order-service');
+          return MockOrderService.getOrders(partnerId, queryParams);
+        }
+        return await OrderService.getOrders(partnerId, queryParams);
+      } catch (error) {
+        console.error('订单查询失败:', error);
+        throw error;
       }
-      return OrderService.getOrders(partnerId, queryParams);
     },
     enabled: !!partnerId,
     staleTime: 0, // 不缓存，每次都获取最新数据

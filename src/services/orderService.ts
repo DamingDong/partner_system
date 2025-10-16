@@ -113,8 +113,13 @@ export class OrderService extends BaseService {
 
     try {
       if (import.meta.env.VITE_USE_MOCK_DATA === 'true') {
-        const { MockOrderService } = await import('../lib/mock-order-service');
-        return MockOrderService.getOrders(partnerId, params);
+        try {
+          const { MockOrderService } = await import('../lib/mock-order-service');
+          return MockOrderService.getOrders(partnerId, params);
+        } catch (error) {
+          console.warn('Mock服务加载失败，使用内置Mock数据:', error);
+          return this.getMockOrders(partnerId, params);
+        }
       }
 
       const response = await this.apiClient.get(`/orders/${partnerId}`, {
@@ -408,6 +413,89 @@ export class OrderService extends BaseService {
     } else {
       localStorage.setItem('todayExportCount', '1');
     }
+  }
+
+  /**
+   * 获取Mock订单数据
+   */
+  private static getMockOrders(partnerId: string, params: OrderQueryParams): PaginatedOrderResult {
+    // 简单的Mock数据实现
+    const mockOrders: Order[] = [
+      {
+        id: '1',
+        orderNumber: 'ORD202401010001',
+        orderType: OrderType.ACTIVATION,
+        partnerId: partnerId,
+        partnerName: '测试合作伙伴',
+        cardNumber: '6225888888888888',
+        phone: '13800138000',
+        orderAmount: 29900,
+        commissionRate: 0.15,
+        commissionAmount: 4485,
+        actualAmount: 25415,
+        fees: [],
+        status: OrderStatus.COMPLETED,
+        statusDesc: '已完成',
+        createdAt: '2024-01-01T10:00:00Z',
+        updatedAt: '2024-01-01T10:30:00Z'
+      },
+      {
+        id: '2',
+        orderNumber: 'ORD202401010002',
+        orderType: OrderType.SUBSCRIPTION,
+        partnerId: partnerId,
+        partnerName: '测试合作伙伴',
+        cardNumber: '6225888888888889',
+        phone: '13800138001',
+        orderAmount: 9900,
+        commissionRate: 0.12,
+        commissionAmount: 1188,
+        actualAmount: 8712,
+        fees: [],
+        status: OrderStatus.PROCESSING,
+        statusDesc: '处理中',
+        createdAt: '2024-01-01T11:00:00Z',
+        updatedAt: '2024-01-01T11:05:00Z'
+      }
+    ];
+
+    // 简单的筛选逻辑
+    let filteredOrders = mockOrders.filter(order => order.partnerId === partnerId);
+    
+    // 状态筛选
+    if (params.status && params.status.length > 0) {
+      filteredOrders = filteredOrders.filter(order => params.status!.includes(order.status));
+    }
+    
+    // 类型筛选
+    if (params.orderType) {
+      filteredOrders = filteredOrders.filter(order => order.orderType === params.orderType);
+    }
+    
+    // 分页
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+    return {
+      orders: paginatedOrders,
+      pagination: {
+        page,
+        limit,
+        total: filteredOrders.length,
+        totalPages: Math.ceil(filteredOrders.length / limit),
+        hasNext: (page * limit) < filteredOrders.length,
+        hasPrev: page > 1
+      },
+      summary: {
+        totalOrders: filteredOrders.length,
+        totalAmount: filteredOrders.reduce((sum, order) => sum + order.orderAmount, 0),
+        totalCommission: filteredOrders.reduce((sum, order) => sum + order.commissionAmount, 0),
+        totalActualAmount: filteredOrders.reduce((sum, order) => sum + order.actualAmount, 0)
+      }
+    };
   }
 }
 

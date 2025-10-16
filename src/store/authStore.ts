@@ -9,7 +9,8 @@ const isDevelopment = import.meta.env.DEV;
 // 根据环境变量或其他条件决定默认用户
 const getDefaultUser = () => {
   // 开发环境可以有默认用户，生产环境应该是null
-  return isDevelopment ? mockPartnerUser : null; 
+  // 默认设置为管理员用户，以便测试管理员功能
+  return isDevelopment ? mockAdminUser : null; 
 };
 
 const getDefaultPermissions = (user: User | null) => {

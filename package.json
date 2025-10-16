@@ -1,5 +1,5 @@
 {
-  "name": "shadcnui",
+  "name": "partner_system",
   "type": "module",
   "packageManager": "pnpm@8.10.0",
   "scripts": {
@@ -44,6 +44,7 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@supabase/supabase-js": "^2.50.3",
     "@tanstack/react-query": "^5.56.2",
+    "@vitejs/plugin-react": "^5.0.4",
     "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
