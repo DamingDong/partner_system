@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Order, 
   OrderQueryParams, 
@@ -12,27 +12,38 @@ import { OrderService } from '../services/orderService';
 import { useAuthStore } from '../store/authStore';
 
 // 订单查询Hook
-export const useOrders = (partnerId: string, initialFilters?: Partial<OrderFilters>) => {
-  const [filters, setFilters] = useState<OrderFilters>({
+export const useOrders = (partnerId: string, filters?: Partial<OrderFilters>) => {
+  const queryClient = useQueryClient();
+  
+  // 分页状态
+  const [pagination, setPagination] = useState({
+    page: (filters as any)?.page || 1,
+    limit: Math.min((filters as any)?.limit || 20, 100)
+  });
+
+  // 筛选状态
+  const [currentFilters, setCurrentFilters] = useState<OrderFilters>({
     orderType: undefined,
     status: undefined,
     startDate: undefined,
     endDate: undefined,
     dateField: 'createdAt',
-    ...initialFilters
-  });
-
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20
+    ...filters
   });
 
   // 构建查询参数
   const queryParams: OrderQueryParams = useMemo(() => ({
     ...pagination,
-    ...filters,
+    ...currentFilters,
     partnerId
-  }), [pagination, filters, partnerId]);
+  }), [pagination, currentFilters, partnerId]);
+
+  // 创建查询键
+  const queryKey = useMemo(() => {
+    // 创建稳定的查询键
+    const filterString = JSON.stringify(currentFilters, Object.keys(currentFilters).sort());
+    return ['orders', partnerId, filterString, pagination.page, pagination.limit];
+  }, [partnerId, currentFilters, pagination.page, pagination.limit]);
 
   // 使用React Query进行数据获取
   const {
@@ -42,8 +53,9 @@ export const useOrders = (partnerId: string, initialFilters?: Partial<OrderFilte
     refetch,
     isFetching
   } = useQuery<PaginatedOrderResult>({
-    queryKey: ['orders', partnerId, queryParams],
+    queryKey,
     queryFn: async () => {
+      console.log('Fetching orders with params:', queryParams);
       // 使用Mock数据
       if (import.meta.env.VITE_USE_MOCK_DATA === 'true') {
         const { MockOrderService } = await import('../lib/mock-order-service');
@@ -52,24 +64,30 @@ export const useOrders = (partnerId: string, initialFilters?: Partial<OrderFilte
       return OrderService.getOrders(partnerId, queryParams);
     },
     enabled: !!partnerId,
-    staleTime: 5 * 60 * 1000, // 5分钟内认为数据是新鲜的
-    refetchOnWindowFocus: false
+    staleTime: 0, // 不缓存，每次都获取最新数据
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    retry: false // 不重试，避免重复请求
   });
 
   // 更新筛选条件
   const updateFilters = useCallback((newFilters: Partial<OrderFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-    setPagination(prev => ({ ...prev, page: 1 })); // 重置到第一页
+    console.log('Updating filters:', newFilters);
+    setCurrentFilters(prev => ({ ...prev, ...newFilters }));
+    // 重置到第一页
+    setPagination(prev => ({ ...prev, page: 1 }));
   }, []);
 
   // 更新分页
   const updatePagination = useCallback((newPagination: Partial<typeof pagination>) => {
+    console.log('Updating pagination:', newPagination);
     setPagination(prev => ({ ...prev, ...newPagination }));
   }, []);
 
   // 重置筛选条件
   const resetFilters = useCallback(() => {
-    setFilters({
+    console.log('Resetting filters');
+    setCurrentFilters({
       orderType: undefined,
       status: undefined,
       startDate: undefined,
@@ -78,6 +96,14 @@ export const useOrders = (partnerId: string, initialFilters?: Partial<OrderFilte
     });
     setPagination({ page: 1, limit: 20 });
   }, []);
+
+  // 手动刷新数据
+  const refresh = useCallback(() => {
+    console.log('Refreshing orders data');
+    // 使查询失效并重新获取
+    queryClient.invalidateQueries({ queryKey: ['orders'] });
+    refetch();
+  }, [queryClient, refetch]);
 
   return {
     // 数据
@@ -91,7 +117,7 @@ export const useOrders = (partnerId: string, initialFilters?: Partial<OrderFilte
     error,
     
     // 筛选和分页
-    filters,
+    filters: currentFilters,
     updateFilters,
     resetFilters,
     currentPage: pagination.page,
@@ -99,7 +125,7 @@ export const useOrders = (partnerId: string, initialFilters?: Partial<OrderFilte
     updatePagination,
     
     // 操作
-    refetch
+    refetch: refresh
   };
 };
 

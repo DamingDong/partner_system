@@ -30,6 +30,7 @@ interface OrderFiltersProps {
   filters: Partial<OrderQueryParams>;
   onFiltersChange: (filters: Partial<OrderQueryParams>) => void;
   onReset: () => void;
+  onSearch?: () => void; // 添加查询回调
   loading?: boolean;
   className?: string;
 }
@@ -54,6 +55,7 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
   filters,
   onFiltersChange,
   onReset,
+  onSearch, // 添加查询回调
   loading = false,
   className
 }) => {
@@ -61,6 +63,7 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
 
   // 更新单个筛选条件
   const updateFilter = (key: keyof OrderQueryParams, value: any) => {
+    console.log(`Updating filter: ${key} =`, value);
     onFiltersChange({
       ...filters,
       [key]: value
@@ -146,6 +149,12 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
                   }
                 }}
                 className="pl-10"
+                onKeyDown={(e) => {
+                  // 添加回车键查询支持
+                  if (e.key === 'Enter') {
+                    onSearch?.();
+                  }
+                }}
               />
             </div>
           </div>
@@ -281,6 +290,13 @@ export const OrderFilters: React.FC<OrderFiltersProps> = ({
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             重置
+          </Button>
+          <Button
+            onClick={onSearch}
+            disabled={loading}
+          >
+            <Search className="h-4 w-4 mr-2" />
+            查询
           </Button>
         </div>
       </CardContent>

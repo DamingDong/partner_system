@@ -1,9 +1,10 @@
-node_modules
-
 # Build artifacts
 dist/
 build/
 .out/
+
+# Dependencies
+node_modules/
 
 # Logs
 *.log
@@ -25,9 +26,3 @@ Thumbs.db
 
 # Vite
 .vite/
-
-# Testing
-coverage/
-
-# Typescript
-*.tsbuildinfo

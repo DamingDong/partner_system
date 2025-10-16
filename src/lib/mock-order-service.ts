@@ -26,6 +26,7 @@ export class MockOrderService {
    * @returns 分页订单结果
    */
   static getOrders(partnerId: string, filters?: Partial<OrderQueryParams>): PaginatedOrderResult {
+    console.log('MockOrderService.getOrders called with:', { partnerId, filters });
     // 根据partnerId确定数据源
     let orders: Order[] = [];
     if (partnerId === 'all') {
@@ -36,21 +37,26 @@ export class MockOrderService {
       orders = mockPartnerOrders.filter(order => order.partnerId === partnerId);
     }
     
+    console.log('Initial orders count:', orders.length);
+    
     // 应用筛选条件
     if (filters) {
       // 订单类型筛选
       if (filters.orderType) {
         orders = orders.filter(order => order.orderType === filters.orderType);
+        console.log('After orderType filter:', orders.length);
       }
       
       // 状态筛选
       if (filters.status && filters.status.length > 0) {
         orders = orders.filter(order => filters.status!.includes(order.status));
+        console.log('After status filter:', orders.length);
       }
       
       // 时间筛选
       if (filters.startDate) {
         orders = orders.filter(order => order.createdAt >= filters.startDate!);
+        console.log('After startDate filter:', orders.length);
       }
       
       if (filters.endDate) {
@@ -58,15 +64,18 @@ export class MockOrderService {
         const endDate = new Date(filters.endDate);
         endDate.setHours(23, 59, 59, 999);
         orders = orders.filter(order => new Date(order.createdAt) <= endDate);
+        console.log('After endDate filter:', orders.length);
       }
       
       // 金额筛选
       if (filters.minAmount !== undefined) {
         orders = orders.filter(order => order.orderAmount >= filters.minAmount!);
+        console.log('After minAmount filter:', orders.length);
       }
       
       if (filters.maxAmount !== undefined) {
         orders = orders.filter(order => order.orderAmount <= filters.maxAmount!);
+        console.log('After maxAmount filter:', orders.length);
       }
       
       // 搜索条件
@@ -74,18 +83,23 @@ export class MockOrderService {
         orders = orders.filter(order => 
           order.cardNumber && order.cardNumber.includes(filters.cardNumber)
         );
+        console.log('After cardNumber filter:', orders.length);
       }
       
       if (filters.phone) {
         orders = orders.filter(order => 
           order.phone && order.phone.includes(filters.phone)
         );
+        console.log('After phone filter:', orders.length);
       }
       
       if (filters.orderNumber) {
         orders = orders.filter(order => order.orderNumber === filters.orderNumber);
+        console.log('After orderNumber filter:', orders.length);
       }
     }
+    
+    console.log('Final orders count:', orders.length);
     
     // 应用分页
     const page = filters?.page || 1;

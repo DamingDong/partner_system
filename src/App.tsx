@@ -31,44 +31,45 @@ const App = () => {
         <ErrorBoundary>
           <BrowserRouter>
             <Routes>
-            {/* Auth Routes */}
-            <Route path="/login" element={
-              isAuthenticated ? <Navigate to="/" replace /> : <Login />
-            } />
-            <Route path="/register" element={
-              isAuthenticated ? <Navigate to="/" replace /> : <Register />
-            } />
-            <Route path="/forgot-password" element={
-              isAuthenticated ? <Navigate to="/" replace /> : <ForgotPassword />
-            } />
-            
-            {/* Protected Routes */}
-            <Route
-              path="/"
-              element={
-                isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="cards" element={
-                <ProtectedRoute requiredPermission={PERMISSIONS.CARDS_IMPORT}>
-                  <Cards />
-                </ProtectedRoute>
+              {/* Auth Routes */}
+              <Route path="/login" element={
+                isAuthenticated ? <Navigate to="/" replace /> : <Login />
               } />
-              <Route path="orders" element={<Orders />} />
-              <Route path="revenue-sharing" element={<RevenueSharing />} />
-              <Route path="reconciliation" element={<Reconciliation />} />
-              <Route path="partners" element={<Partners />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
+              <Route path="/register" element={
+                isAuthenticated ? <Navigate to="/" replace /> : <Register />
+              } />
+              <Route path="/forgot-password" element={
+                isAuthenticated ? <Navigate to="/" replace /> : <ForgotPassword />
+              } />
+              
+              {/* Protected Routes */}
+              <Route
+                path="/"
+                element={
+                  isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="cards" element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.CARDS_IMPORT}>
+                    <Cards />
+                  </ProtectedRoute>
+                } />
+                <Route path="orders" element={<Orders />} />
+                <Route path="revenue-sharing" element={<RevenueSharing />} />
+                <Route path="reconciliation" element={<Reconciliation />} />
+                <Route path="partners" element={<Partners />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </ErrorBoundary>
-    </TooltipProvider>
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 

@@ -45,13 +45,6 @@ export const Orders: React.FC = () => {
   // 管理员可以查看所有订单，合作伙伴只能查看自己的订单
   const targetPartnerId = isAdmin ? 'all' : (user?.partnerId || '');
 
-  // 构建完整的查询参数
-  const queryParams = {
-    ...filters,
-    page: pagination.page,
-    limit: pagination.limit
-  };
-
   // 获取订单数据
   const {
     orders,
@@ -60,7 +53,7 @@ export const Orders: React.FC = () => {
     isLoading,
     error,
     refetch
-  } = useOrders(targetPartnerId, queryParams);
+  } = useOrders(targetPartnerId, filters);  // 直接传递 filters，分页信息由 useOrders 内部处理
 
   // 获取订单详情
   const {
@@ -84,9 +77,18 @@ export const Orders: React.FC = () => {
 
   // 处理筛选条件变化
   const handleFiltersChange = (newFilters: Partial<OrderFiltersType>) => {
+    console.log('Filters changed:', newFilters);
     setFilters(prev => ({ ...prev, ...newFilters }));
+    // 注意：这里不再自动重置到第一页，而是由查询按钮处理
+  };
+
+  // 处理查询操作
+  const handleSearch = () => {
+    console.log('Search button clicked with filters:', filters);
     // 重置到第一页
     setPagination(prev => ({ ...prev, page: 1 }));
+    // 直接触发重新获取数据
+    refetch();
   };
 
   // 重置筛选条件
@@ -247,6 +249,7 @@ export const Orders: React.FC = () => {
         filters={filters}
         onFiltersChange={handleFiltersChange}
         onReset={handleResetFilters}
+        onSearch={handleSearch} // 添加查询回调
         loading={isLoading}
       />
 

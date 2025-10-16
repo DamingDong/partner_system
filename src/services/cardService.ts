@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { mockCards, mockBatches, mockRedemptionRequests, mockCardStats } from './cardMockData';
 import { RecoveryPoolService } from './recoveryPoolService';
+import { PermissionService } from './permissionService';
 import {
   MembershipCard,
   CardBatch,
@@ -13,7 +14,8 @@ import {
   ReplacementRequest,
   CardStatus,
   CardType,
-  BindingData
+  BindingData,
+  BatchExchangeRequest
 } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
@@ -64,6 +66,9 @@ class CardServiceClass {
 
   // 批量导入会员卡
   async importCards(partnerId: string, file: File): Promise<void> {
+    // 检查权限，只有管理员才能导入会员卡
+    PermissionService.enforcePermission('cards:import');
+    
     if (USE_MOCK_DATA) {
       // 模拟导入成功
       console.log('模拟导入会员卡:', file.name);
@@ -88,6 +93,9 @@ class CardServiceClass {
 
   // 通过接口对接批量写入会员卡
   async createBatch(importRequest: ImportCardsRequest): Promise<CardBatch> {
+    // 检查权限，只有管理员才能导入会员卡
+    PermissionService.enforcePermission('cards:import');
+    
     if (USE_MOCK_DATA) {
       // 模拟创建批次
       const newBatch: CardBatch = {
@@ -550,9 +558,9 @@ class CardServiceClass {
         {
           id: 'exchange-001',
           partnerId,
-          requestedDays: 365,
+          totalDaysRequired: 365,
           cardCount: 1,
-          cardType: CardType.REGULAR,
+          cardType: 'yearly',
           status: 'pending',
           reason: '补充年卡库存',
           requestedAt: '2024-01-20T10:00:00Z'
@@ -560,14 +568,14 @@ class CardServiceClass {
         {
           id: 'exchange-002',
           partnerId,
-          requestedDays: 150,
+          totalDaysRequired: 150,
           cardCount: 5,
-          cardType: CardType.BOUND,
+          cardType: 'monthly',
           status: 'approved',
           reason: '月度批量兑换',
           requestedAt: '2024-01-19T14:30:00Z',
           processedAt: '2024-01-19T16:00:00Z',
-          processedBy: 'admin',
+          operatorId: 'admin',
           generatedCards: ['card-new-001', 'card-new-002', 'card-new-003', 'card-new-004', 'card-new-005']
         }
       ];
