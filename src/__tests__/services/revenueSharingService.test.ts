@@ -33,10 +33,9 @@ describe('RevenueSharingService', () => {
     });
   });
 
-  describe('configureSharingRule', () => {
-    it('应该正确配置分账规则', async () => {
+  describe('createSharingRule', () => {
+    it('应该正确创建分账规则', async () => {
       const rule = {
-        id: 'test-rule',
         partnerId: 'test-partner-id',
         orderType: OrderType.ACTIVATION,
         commissionRate: 0.1,
@@ -46,8 +45,10 @@ describe('RevenueSharingService', () => {
         isActive: true
       };
 
-      const result = await RevenueSharingService.configureSharingRule(rule);
-      expect(result).toBe(true);
+      const result = await RevenueSharingService.createSharingRule(rule);
+      expect(result).toHaveProperty('id');
+      expect(result.partnerId).toBe('test-partner-id');
+      expect(result.commissionRate).toBe(0.1);
     });
   });
 });

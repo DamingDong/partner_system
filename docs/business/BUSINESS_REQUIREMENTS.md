@@ -24,12 +24,11 @@
 
 ```mermaid
 stateDiagram-v2
-    [*] --> 待激活: 批量导入
-    待激活 --> 已绑定: 激活成功
-    待激活 --> 未激活: 激活失败
-    未激活 --> 已绑定: 重新激活
-    已绑定 --> 已过期: 到期
-    已绑定 --> 已销卡: 主动销卡
+    [*] --> 待绑定
+    待绑定 --> 已绑定: 绑定MAC地址
+    已绑定 --> 已激活: 激活成功
+    已激活 --> 已过期: 到期
+    已激活 --> 已销卡: 主动销卡
     已过期 --> 已销卡: 清理过期卡
     已销卡 --> [*]
 ```
@@ -385,6 +384,7 @@ function calculateSharing(activationCount: number, baseAmount: number): number {
 - **统一管理**：所有退卡、换卡的天数统一入池
 - **灵活使用**：支持批量兑换时从池中扣除天数
 - **余额控制**：防止超额使用，确保权益平衡
+- **分类管理**：按卡类型分类管理回收池（月卡池、年卡池等）
 
 ### 入池规则
 
@@ -409,10 +409,171 @@ interface RecoveryApproval {
 }
 ```
 
+#### 回收申请来源
+- 一级渠道商：可发起批量回收申请。
+- 二级渠道商：需通过一级渠道商发起申请。
+
+**销退规则**：
+- 个人用户和设备用户销退：取消绑定，权益天数按剩余值入回收池。
+
+#### 退货申请流程
+```mermaid
+flowchart TD
+    A[硬件设备退货申请] --> B{退货原因分类}
+    B -->|生产缺陷| C[生产缺陷退货]
+    B -->|质量问题| D[质量问题退货]
+    B -->|其他原因| E[其他原因退货]
+    
+    C --> F[检查关联会员卡]
+    D --> F
+    E --> F
+    
+    F --> G{会员卡状态检查}
+    G -->|已激活| H[计算剩余有效天数]
+    G -->|未激活| I[直接取消会员权益]
+    
+    H --> J[取消会员权益]
+    J --> K[计算回收天数]
+    K --> L[入对应回收池]
+    L --> M[生成退货记录]
+    
+    I --> N[标记卡为无效]
+    N --> O[生成退货记录]
+```
+
+#### 会员权益取消逻辑
+```typescript
+interface HardwareReturnRecovery {
+  // 退货信息
+  returnRequestId: string
+  deviceId: string          // 硬件设备ID
+  purchaseOrderId: string   // 采购订单ID
+  returnReason: 'PRODUCTION_DEFECT' | 'QUALITY_ISSUE' | 'OTHER'
+  
+  // 会员权益处理
+  cardId: string           // 关联的会员卡ID
+  userId: string           // 用户ID
+  cardType: 'MONTHLY' | 'ANNUAL' | 'LIFETIME' // 卡类型
+  remainingDays: number    // 剩余有效天数
+  
+  // 回收池处理
+  targetPool: 'MONTHLY_POOL' | 'QUARTERLY_POOL' | 'ANNUAL_POOL' // 目标回收池
+  recoveredDays: number     // 入池天数
+  
+  
+  // 审批信息
+  operatorId: string       // 操作员
+  processedAt: Date       // 处理时间
+  remarks: string         // 处理备注
+}
+
+// 硬件退货处理函数
+function processHardwareReturn(returnRequest: HardwareReturnRecovery): void {
+  // 1. 验证退货申请
+  validateReturnRequest(returnRequest)
+  
+  // 2. 取消会员权益
+  cancelMemberBenefits(returnRequest.cardId, returnRequest.userId)
+  
+  // 3. 计算回收天数
+  const recoveredDays = calculateRecoveredDays(
+    returnRequest.remainingDays,
+    returnRequest.deductionRatio
+  )
+  
+  // 4. 入对应回收池
+  addToRecoveryPool(returnRequest.targetPool, recoveredDays)
+  
+  // 5. 生成处理记录
+  createReturnRecord(returnRequest, recoveredDays)
+}
+```
+
+#### 回收池分类规则
+```typescript
+interface RecoveryPoolClassification {
+  // 池类型定义
+  poolTypes: {
+    MONTHLY_POOL: {
+      name: '月卡回收池'
+      description: '存储月卡类型的回收天数'
+      cardTypes: ['MONTHLY', '30_DAY']
+      maxCapacity: 3650 // 最大容量10年
+    }
+    QUARTERLY_POOL: {
+      name: '季卡回收池'
+      description: '存储季卡类型的回收天数'
+      cardTypes: ['QUARTERLY', '90_DAY']
+      maxCapacity: 10950 // 最大容量30年
+    }
+    ANNUAL_POOL: {
+      name: '年卡回收池'
+      description: '存储年卡类型的回收天数'
+      cardTypes: ['ANNUAL', '365_DAY']
+      maxCapacity: 36500 // 最大容量100年
+    }
+  }
+  
+  // 分类规则
+  classificationRules: {
+    // 根据卡类型自动分类
+    autoClassification: (cardType: string) => string
+    
+    // 手动指定分类（特殊情况下）
+    manualOverride: (cardType: string, targetPool: string) => boolean
+    
+    // 池间转移规则
+    poolTransfer: (sourcePool: string, targetPool: string, days: number) => boolean
+  }
+}
+
+// 回收池分类函数
+function classifyToRecoveryPool(cardType: string): string {
+  const classificationMap = {
+    'MONTHLY': 'MONTHLY_POOL',
+    'QUARTERLY': 'QUARTERLY_POOL',
+    'ANNUAL': 'ANNUAL_POOL'
+  }
+  
+  return classificationMap[cardType] || 'MONTHLY_POOL' // 默认月卡池
+}
+```
+
+#### 扣减比例规则
+```typescript
+interface DeductionRules {
+  // 退货原因对应的扣减比例
+  deductionRatios: {
+    PRODUCTION_DEFECT: 1.0,    // 生产缺陷：全额回收
+    QUALITY_ISSUE: 0.8,        // 质量问题：80%回收
+    OTHER: 0.5                 // 其他原因：50%回收
+  }
+  
+  // 特殊规则
+  specialRules: {
+    // 使用时间超过90天，扣减比例减半
+    timeBasedDeduction: (usedDays: number) => number
+    
+    // 多次退货的用户，扣减比例递减
+    frequencyBasedDeduction: (returnCount: number) => number
+    
+    // VIP用户特殊处理
+    vipDeduction: (vipLevel: number) => number
+  }
+}
+
+// 计算实际回收天数
+function calculateRecoveredDays(remainingDays: number, returnReason: string): number {
+  const ratio = getDeductionRatio(returnReason)
+  return Math.floor(remainingDays * ratio)
+}
+```
+
 #### 批量处理规则
 - **批量审批**：管理员可一键审批多个申请
 - **自动入池**：审批通过后自动计算天数并入池
 - **记录追溯**：完整的操作记录和审计日志
+- **分类入池**：根据卡类型自动分配到对应的回收池
 
 ### 出池规则
 
