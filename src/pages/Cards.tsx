@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MembershipCard, CardType, CardStatus, CardBatch, RedemptionRequest, RecoveryPool } from '@/types';
 import { CardService } from '@/services/cardService';
 import { RecoveryPoolService } from '@/services/recoveryPoolService';
@@ -29,11 +30,13 @@ import {
   Activity,
   Recycle,
   Gift,
-  FileDown
+  FileDown,
+  Eye
 } from 'lucide-react';
 
 const Cards: React.FC = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [cards, setCards] = useState<MembershipCard[]>([]);
   const [batches, setBatches] = useState<CardBatch[]>([]);
   const [filteredCards, setFilteredCards] = useState<MembershipCard[]>([]);
@@ -139,10 +142,7 @@ const Cards: React.FC = () => {
     setFilteredCards(filtered);
   };
 
-  const handleActivateCard = (card: MembershipCard) => {
-    setSelectedCard(card);
-    setShowActivationModal(true);
-  };
+  
 
   const handleActivationSuccess = () => {
     loadData(); // 重新加载数据以更新状态
@@ -430,20 +430,20 @@ const Cards: React.FC = () => {
       rejected: { label: '已拒绝', variant: 'destructive' as const },
     };
     
-    const statusInfo = statusMap[status as keyof typeof statusMap];
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, variant: 'default' as const };
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
   const getStatusBadge = (status: CardStatus) => {
     const statusConfig = {
-      [CardStatus.UNACTIVATED]: { label: '待激活', variant: 'secondary' as const },
-      [CardStatus.INACTIVE]: { label: '未激活', variant: 'destructive' as const },
+      [CardStatus.PENDING_BIND]: { label: '待绑定', variant: 'secondary' as const },
       [CardStatus.BOUND]: { label: '已绑定', variant: 'default' as const },
+      [CardStatus.ACTIVE]: { label: '已激活', variant: 'default' as const },
       [CardStatus.EXPIRED]: { label: '已过期', variant: 'outline' as const },
       [CardStatus.CANCELLED]: { label: '已销卡', variant: 'destructive' as const },
     };
 
-    const config = statusConfig[status];
+    const config = statusConfig[status] || { label: status, variant: 'default' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -458,8 +458,9 @@ const Cards: React.FC = () => {
   const getCardStats = () => {
     const stats = {
       total: cards.length,
-      unactivated: cards.filter(c => c.status === CardStatus.UNACTIVATED).length,
+      pendingBind: cards.filter(c => c.status === CardStatus.PENDING_BIND).length,
       bound: cards.filter(c => c.status === CardStatus.BOUND).length,
+      active: cards.filter(c => c.status === CardStatus.ACTIVE).length,
       expired: cards.filter(c => c.status === CardStatus.EXPIRED).length,
     };
     return stats;
@@ -813,8 +814,9 @@ const Cards: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">全部状态</SelectItem>
-                <SelectItem value={CardStatus.UNACTIVATED}>待激活</SelectItem>
+                <SelectItem value={CardStatus.PENDING_BIND}>待绑定</SelectItem>
                 <SelectItem value={CardStatus.BOUND}>已绑定</SelectItem>
+                <SelectItem value={CardStatus.ACTIVE}>已激活</SelectItem>
                 <SelectItem value={CardStatus.EXPIRED}>已过期</SelectItem>
                 <SelectItem value={CardStatus.CANCELLED}>已销卡</SelectItem>
               </SelectContent>
@@ -926,15 +928,19 @@ const Cards: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-1">
+                            {/* 详情按钮 */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => navigate(`/cards/${card.id}`)}
+                              className="h-8 px-2"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              详情
+                            </Button>
+                            
                             {card.status === CardStatus.UNACTIVATED && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleActivateCard(card)}
-                                className="h-8 px-3"
-                              >
-                                激活
-                              </Button>
+                              
                             )}
                             {(card.status === CardStatus.BOUND || card.status === CardStatus.EXPIRED) && (
                               <Dialog open={showRedemptionModal} onOpenChange={setShowRedemptionModal}>

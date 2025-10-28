@@ -28,11 +28,13 @@ export class RevenueSharingService {
     if (USE_MOCK_DATA) {
       let records: SharingRecord[] = [];
       if (partnerId === 'all') {
-        // 管理员可以看到所有分账记录
-        records = [...mockSharingRecords];
+        // 管理员可以看到所有分账记录（仅 SUBSCRIPTION 类型）
+        records = mockSharingRecords.filter(record => record.orderType === 'SUBSCRIPTION');
       } else {
-        // 合作伙伴只能看到自己的分账记录
-        records = mockSharingRecords.filter(record => record.toPartnerId === partnerId);
+        // 合作伙伴只能看到自己的分账记录（仅 SUBSCRIPTION 类型）
+        records = mockSharingRecords.filter(record => 
+          record.toPartnerId === partnerId && record.orderType === 'SUBSCRIPTION'
+        );
       }
       return {
         data: records.slice((page - 1) * pageSize, page * pageSize),
@@ -62,11 +64,13 @@ export class RevenueSharingService {
     if (USE_MOCK_DATA) {
       let records: SharingRecord[] = [];
       if (partnerId === 'all') {
-        // 管理员可以看到所有分账记录
-        records = [...mockSharingRecords];
+        // 管理员可以看到所有分账记录（仅 SUBSCRIPTION 类型）
+        records = mockSharingRecords.filter(record => record.orderType === 'SUBSCRIPTION');
       } else {
-        // 合作伙伴只能看到自己的分账记录
-        records = mockSharingRecords.filter(record => record.fromPartnerId === partnerId);
+        // 合作伙伴只能看到自己的分账记录（仅 SUBSCRIPTION 类型）
+        records = mockSharingRecords.filter(record => 
+          record.fromPartnerId === partnerId && record.orderType === 'SUBSCRIPTION'
+        );
       }
       return {
         data: records.slice((page - 1) * pageSize, page * pageSize),

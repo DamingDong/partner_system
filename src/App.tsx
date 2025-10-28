@@ -17,6 +17,9 @@ import Partners from '@/pages/Partners';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import { Orders } from '@/pages/Orders';
+import Devices from '@/pages/Devices';
+import CardDetail from '@/pages/CardDetail';
+import DeviceDetail from '@/pages/DeviceDetail';
 import { PERMISSIONS } from '@/types/permissions';
 
 const queryClient = new QueryClient();
@@ -51,8 +54,23 @@ const App = () => {
               >
                 <Route index element={<Dashboard />} />
                 <Route path="cards" element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.CARDS_IMPORT}>
+                  <ProtectedRoute requiredPermission={PERMISSIONS.CARDS_MANAGE}>
                     <Cards />
+                  </ProtectedRoute>
+                } />
+                <Route path="cards/:id" element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.CARDS_READ}>
+                    <CardDetail />
+                  </ProtectedRoute>
+                } />
+                <Route path="devices" element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.DEVICES_MANAGE}>
+                    <Devices />
+                  </ProtectedRoute>
+                } />
+                <Route path="devices/:id" element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.DEVICES_READ}>
+                    <DeviceDetail />
                   </ProtectedRoute>
                 } />
                 <Route path="orders" element={<Orders />} />

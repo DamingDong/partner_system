@@ -15,7 +15,10 @@ import {
   CardStatus,
   CardType,
   BindingData,
-  BatchExchangeRequest
+  BatchExchangeRequest,
+  Device,
+  DeviceStatus,
+  DeviceRecoveryStatus
 } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
@@ -158,33 +161,7 @@ class CardServiceClass {
     }
   }
 
-  // 激活会员卡
-  async activateCard(cardId: string, activationData: BindingData): Promise<void> {
-    if (USE_MOCK_DATA) {
-      // 模拟激活过程
-      const card = mockCards.find(c => c.id === cardId);
-      if (card) {
-        card.status = CardStatus.BOUND;
-        card.activationDate = new Date().toISOString();
-        card.bindingInfo = {
-          phoneNumber: activationData.phoneNumber,
-          macAddress: activationData.macAddress,
-          channelPackage: activationData.channelPackage,
-          bindingTime: new Date().toISOString(),
-          deviceInfo: activationData.deviceInfo
-        };
-        card.updatedAt = new Date().toISOString();
-      }
-      return new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    
-    try {
-      await this.api.post(`/${cardId}/activate`, activationData);
-    } catch (error) {
-      console.error('激活会员卡失败:', error);
-      throw error;
-    }
-  }
+  
 
   // 申请销卡
   async cancelCard(cardId: string, reason: string): Promise<void> {
@@ -426,6 +403,58 @@ class CardServiceClass {
     }
   }
 
+  // 获取设备列表
+  async getDevices(): Promise<Device[]> {
+    if (USE_MOCK_DATA) {
+      // 模拟设备数据
+      const mockDevices: Device[] = [
+        {
+          id: 'device-1',
+          macAddress: '00:1B:44:11:3A:B7',
+          deviceName: '会议室设备',
+          deviceModel: 'TP-Link Router',
+          status: DeviceStatus.ACTIVE,
+          cardNumber: 'CARD001234',
+          boundAt: '2024-01-15T10:00:00Z',
+          createdAt: '2024-01-10T08:00:00Z',
+          updatedAt: '2024-01-15T10:00:00Z'
+        },
+        {
+          id: 'device-2',
+          macAddress: '08:00:27:3A:5B:9C',
+          deviceName: '前台设备',
+          deviceModel: 'Huawei Switch',
+          status: DeviceStatus.INACTIVE,
+          cardNumber: undefined,
+          boundAt: undefined,
+          createdAt: '2024-01-12T09:00:00Z',
+          updatedAt: '2024-01-12T09:00:00Z'
+        },
+        {
+          id: 'device-3',
+          macAddress: 'A0:1B:2C:3D:4E:5F',
+          deviceName: '办公室设备',
+          deviceModel: 'Cisco Router',
+          status: DeviceStatus.SUSPENDED,
+          cardNumber: 'CARD005678',
+          boundAt: '2024-01-08T14:30:00Z',
+          createdAt: '2024-01-05T11:00:00Z',
+          updatedAt: '2024-01-18T16:00:00Z'
+        }
+      ];
+      
+      return new Promise(resolve => setTimeout(() => resolve(mockDevices), 500));
+    }
+    
+    try {
+      const response = await this.api.get('/devices');
+      return response.data;
+    } catch (error) {
+      console.error('获取设备列表失败:', error);
+      throw error;
+    }
+  }
+
   // 获取会员卡统计信息
   async getCardStats(partnerId: string): Promise<{
     totalCards: number;
@@ -613,6 +642,150 @@ class CardServiceClass {
       });
     } catch (error) {
       console.error('处理批量兑换申请失败:', error);
+      throw error;
+    }
+  }
+
+  // 获取单个会员卡详情
+  async getCardById(cardId: string): Promise<MembershipCard> {
+    if (USE_MOCK_DATA) {
+      // 模拟当前激活的会员卡 CARD003456 的完整数据
+      const mockCardData: Record<string, MembershipCard> = {
+        'CARD003456': {
+          id: 'card-3',
+          cardNumber: 'CARD003456',
+          cardType: CardType.BOUND,
+          status: CardStatus.ACTIVE,
+          partnerId: 'partner-1',
+          batchId: 'batch-2024-03',
+          activationDate: '2024-03-01T09:00:00Z',
+          expiryDate: '2025-03-01T09:00:00Z',
+          bindingInfo: {
+            phoneNumber: '13800138000',
+            macAddress: '00:1B:44:11:3A:B7',
+            channelPackage: 'VIP_PACKAGE',
+            bindingTime: '2024-03-01T09:00:00Z',
+            deviceInfo: {
+              deviceId: 'device-1',
+              deviceName: '会议室设备',
+              deviceModel: 'TP-Link Router',
+              osVersion: 'v1.0.0'
+            }
+          },
+          remainingDays: 365,
+          userId: 'user-1001',
+          createdAt: '2024-03-01T08:00:00Z',
+          updatedAt: '2024-03-01T09:00:00Z',
+          bindingHistory: [
+            {
+              deviceId: 'device-1',
+              boundAt: '2024-03-01T09:00:00Z',
+              unboundAt: undefined,
+              recoveryReason: undefined
+            }
+          ],
+          statusHistory: [
+            {
+              status: CardStatus.UNACTIVATED,
+              changedAt: '2024-03-01T08:00:00Z',
+              changedBy: 'system',
+              reason: '会员卡创建'
+            },
+            {
+              status: CardStatus.BOUND,
+              changedAt: '2024-03-01T09:00:00Z',
+              changedBy: 'user-1001',
+              reason: '会员卡激活并绑定设备'
+            },
+            {
+              status: CardStatus.ACTIVE,
+              changedAt: '2024-03-01T10:00:00Z',
+              changedBy: 'system',
+              reason: '会员卡激活完成'
+            }
+          ]
+        }
+      };
+      
+      const card = mockCardData[cardId] || mockCards.find(c => c.id === cardId);
+      if (!card) {
+        throw new Error('会员卡不存在');
+      }
+      
+      return new Promise(resolve => setTimeout(() => resolve(card), 300));
+    }
+    
+    try {
+      const response = await this.api.get(`/${cardId}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取会员卡详情失败:', error);
+      throw error;
+    }
+  }
+
+  // 获取单个设备详情
+  async getDeviceById(deviceId: string): Promise<Device> {
+    if (USE_MOCK_DATA) {
+      // 模拟设备数据
+      const mockDevices: Device[] = [
+        {
+          id: 'device-1',
+          macAddress: '00:1B:44:11:3A:B7',
+          deviceName: '会议室设备',
+          deviceModel: 'TP-Link Router',
+          status: DeviceStatus.ACTIVE,
+          cardNumber: 'CARD001234',
+          boundAt: '2024-01-15T10:00:00Z',
+          createdAt: '2024-01-10T08:00:00Z',
+          updatedAt: '2024-01-15T10:00:00Z',
+          recoveryCount: 1,
+          recoveryStatus: DeviceRecoveryStatus.LIMITED,
+          lastRecoveryDate: '2024-01-20T14:30:00Z'
+        },
+        {
+          id: 'device-2',
+          macAddress: '08:00:27:3A:5B:9C',
+          deviceName: '前台设备',
+          deviceModel: 'Huawei Switch',
+          status: DeviceStatus.INACTIVE,
+          cardNumber: undefined,
+          boundAt: undefined,
+          createdAt: '2024-01-12T09:00:00Z',
+          updatedAt: '2024-01-12T09:00:00Z',
+          recoveryCount: 0,
+          recoveryStatus: DeviceRecoveryStatus.AVAILABLE,
+          lastRecoveryDate: undefined
+        },
+        {
+          id: 'device-3',
+          macAddress: 'A0:1B:2C:3D:4E:5F',
+          deviceName: '办公室设备',
+          deviceModel: 'Cisco Router',
+          status: DeviceStatus.SUSPENDED,
+          cardNumber: 'CARD005678',
+          boundAt: '2024-01-08T14:30:00Z',
+          createdAt: '2024-01-05T11:00:00Z',
+          updatedAt: '2024-01-18T16:00:00Z',
+          recoveryCount: 3,
+          recoveryStatus: DeviceRecoveryStatus.BLOCKED,
+          lastRecoveryDate: '2024-01-25T09:15:00Z'
+        }
+      ];
+      
+      const device = mockDevices.find(d => d.id === deviceId);
+      if (!device) {
+        throw new Error('设备不存在');
+      }
+      
+      return new Promise(resolve => setTimeout(() => resolve(device), 300));
+    }
+    
+    try {
+      const response = await this.api.get(`/devices/${deviceId}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取设备详情失败:', error);
       throw error;
     }
   }

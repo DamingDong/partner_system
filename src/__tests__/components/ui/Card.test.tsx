@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@/test/test-utils'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
+import { CardStatus } from '@/types'
 
 describe('Card Components', () => {
   describe('Card', () => {
@@ -121,6 +122,38 @@ describe('Card Components', () => {
       expect(screen.getByText('项目内容区域')).toBeInTheDocument()
       expect(screen.getByText('取消')).toBeInTheDocument()
       expect(screen.getByText('部署')).toBeInTheDocument()
+    })
+  })
+
+  describe('Card状态显示', () => {
+    it('应该正确显示PENDING_BIND状态', () => {
+      render(
+        <Card>
+          <CardHeader>
+            <CardTitle>会员卡状态</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>状态: {CardStatus.PENDING_BIND}</p>
+          </CardContent>
+        </Card>
+      )
+      
+      expect(screen.getByText(`状态: ${CardStatus.PENDING_BIND}`)).toBeInTheDocument()
+    })
+
+    it('应该正确显示BOUND状态', () => {
+      render(
+        <Card>
+          <CardHeader>
+            <CardTitle>会员卡状态</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>状态: {CardStatus.BOUND}</p>
+          </CardContent>
+        </Card>
+      )
+      
+      expect(screen.getByText(`状态: ${CardStatus.BOUND}`)).toBeInTheDocument()
     })
   })
 })

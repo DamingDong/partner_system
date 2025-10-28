@@ -221,12 +221,16 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">待激活</span>
-                <Badge variant="secondary">{dashboardData?.cardStats?.unactivated || 0}</Badge>
+                <span className="text-sm text-gray-600">待绑定</span>
+                <Badge variant="secondary">{dashboardData?.cardStats?.pendingBind || 0}</Badge>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">已绑定</span>
                 <Badge variant="default">{dashboardData?.cardStats?.bound || 0}</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">已激活</span>
+                <Badge variant="success">{dashboardData?.cardStats?.active || 0}</Badge>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">已过期</span>

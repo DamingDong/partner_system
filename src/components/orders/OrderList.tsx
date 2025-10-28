@@ -219,17 +219,29 @@ export const OrderList: React.FC<OrderListProps> = ({
                   <span className="font-medium">{formatCurrency(order.orderAmount)}</span>
                 </TableCell>
                 <TableCell className="text-right hidden sm:table-cell">
-                  <span className="text-sm">{(order.commissionRate * 100).toFixed(1)}%</span>
+                  {order.orderType === OrderType.SUBSCRIPTION ? (
+                    <span className="text-sm">{(order.commissionRate * 100).toFixed(1)}%</span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <span className="font-medium text-green-600">
-                    {formatCurrency(order.commissionAmount)}
-                  </span>
+                  {order.orderType === OrderType.SUBSCRIPTION ? (
+                    <span className="font-medium text-green-600">
+                      {formatCurrency(order.commissionAmount)}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">不参与分账</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <span className="font-medium">
-                    {formatCurrency(order.actualAmount)}
-                  </span>
+                  {order.orderType === OrderType.SUBSCRIPTION ? (
+                    <span className="font-medium">
+                      {formatCurrency(order.actualAmount)}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge variant={getStatusVariant(order.status)}>

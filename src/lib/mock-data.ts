@@ -392,7 +392,10 @@ export const adminPermissions = [
   'settings:write',
   'users:read',
   'users:write',
-  'users:delete'
+  'users:delete',
+  'devices:view',
+  'devices:manage',
+  'devices:read'
 ];
 
 // 一级代理伙伴权限配置
@@ -406,7 +409,8 @@ export const partnerPermissions = [
   'reconciliation:read', // 对账单查看（仅自己的）
   'partners:read',       // 合作伙伴查看（仅自己的子伙伴）
   'reports:read',        // 报表查看（仅自己的数据）
-  'settings:read'        // 基础设置查看
+  'settings:read',       // 基础设置查看
+  'devices:read'         // 查看设备详情
 ];
 
 // 权限检查工具函数

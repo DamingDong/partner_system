@@ -27,17 +27,57 @@ export enum CardType {
 
 // 会员卡状态
 export enum CardStatus {
-  UNACTIVATED = 'UNACTIVATED',  // 待激活（活跃）
+  PENDING_BIND = 'PENDING_BIND',  // 待绑定
+  BOUND = 'BOUND',                // 已绑定
+  ACTIVE = 'ACTIVE',              // 已激活
+  EXPIRED = 'EXPIRED',            // 已过期
+  CANCELLED = 'CANCELLED'         // 已销卡（用户退款后权益已回收）
+}
+
+// 设备状态
+export enum DeviceStatus {
+  ACTIVE = 'ACTIVE',            // 活跃
   INACTIVE = 'INACTIVE',        // 未激活
-  BOUND = 'BOUND',              // 已绑定
-  EXPIRED = 'EXPIRED',          // 已过期
-  CANCELLED = 'CANCELLED'       // 已销卡（用户退款后权益已回收）
+  SUSPENDED = 'SUSPENDED'       // 已暂停
+}
+
+// 设备回收限制状态
+export enum DeviceRecoveryStatus {
+  AVAILABLE = 'AVAILABLE',      // 可回收
+  LIMITED = 'LIMITED',          // 回收受限（已回收1-2次）
+  BLOCKED = 'BLOCKED'           // 禁止回收（已回收3次）
 }
 
 // 绑定类型
 export enum BindingType {
   MAC_ADDRESS = 'MAC_ADDRESS',
   CHANNEL_PACKAGE = 'CHANNEL_PACKAGE'
+}
+
+// 设备信息接口
+export interface DeviceInfo {
+  id: string;
+  macAddress: string;
+  deviceName: string;
+  model: string;
+  systemVersion: string;
+  recoveryCount: number; // 回收次数
+  recoveryStatus: DeviceRecoveryStatus; // 回收状态
+  lastRecoveryDate?: string; // 最后回收日期
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 设备回收记录接口
+export interface DeviceRecoveryRecord {
+  id: string;
+  deviceId: string;
+  cardId: string;
+  recoveryReason: string;
+  recoveryDays: number; // 回收天数
+  recoveryDate: string;
+  operatorId: string;
+  createdAt: string;
 }
 
 // 订单类型
@@ -130,11 +170,23 @@ export interface MembershipCard {
   batchId: string;               // 批次ID
   activationDate?: string;       // 激活时间
   expiryDate?: string;           // 到期时间
-  bindingInfo?: BindingInfo;     // 绑定信息
+  bindingInfo?: BindingInfo;     // 当前绑定信息
   remainingDays?: number;        // 剩余天数
   userId?: string;               // 用户ID
   createdAt: string;             // 创建时间
   updatedAt: string;             // 更新时间
+  bindingHistory: Array<{
+    deviceId: string;            // 绑定的设备ID
+    boundAt: string;            // 绑定时间
+    unboundAt?: string;         // 解绑时间（如果已解绑）
+    recoveryReason?: string;     // 回收原因（如果已回收）
+  }>;                           // 绑定历史记录
+  statusHistory: Array<{
+    status: CardStatus;          // 状态类型
+    changedAt: string;           // 状态变更时间
+    changedBy?: string;          // 操作人（可选）
+    reason?: string;             // 变更原因（可选）
+  }>;                           // 状态变化历史记录
 }
 
 // 绑定信息
@@ -154,25 +206,26 @@ export interface DeviceInfo {
   appVersion: string;
 }
 
-// 分账规则
-export interface RevenueSharingRule {
-  id: string;
-  partnerId: string;
-  ruleType: string;
-  commissionRate: number;
-  conditions: RuleCondition[];
-  priority: number;
-  effectiveDate: string;
-  expiryDate?: string;
-  isActive: boolean;
+// 设备信息（用于设备列表）
+export interface Device {
+  id: string;                    // 设备ID
+  macAddress: string;            // MAC地址
+  deviceName?: string;           // 设备名称
+  deviceModel?: string;          // 设备型号
+  status: DeviceStatus;           // 设备状态
+  cardNumber?: string;           // 当前绑定的会员卡号
+  boundAt?: string;              // 当前绑定时间
+  createdAt: string;             // 创建时间
+  updatedAt: string;             // 更新时间
+  bindingHistory: Array<{
+    cardNumber: string;          // 绑定的会员卡号
+    boundAt: string;            // 绑定时间
+    unboundAt?: string;         // 解绑时间（如果已解绑）
+    recoveryReason?: string;     // 回收原因（如果已回收）
+  }>;                           // 绑定历史记录
 }
 
-// 规则条件
-export interface RuleCondition {
-  field: string;
-  operator: string;
-  value: string | number;
-}
+
 
 // 交易记录
 export interface Transaction {
