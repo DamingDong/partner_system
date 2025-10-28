@@ -72,13 +72,16 @@ src/
 │   ├── orders/         # 订单组件
 │   ├── partners/       # 合作伙伴组件
 │   ├── recovery/       # 权益回收组件
+│   ├── revenue/        # 分账管理组件
 │   └── ui/             # 基础UI组件 (shadcn/ui)
 ├── pages/              # 页面组件
 │   ├── Dashboard.tsx   # 仪表板页面
 │   ├── Cards.tsx       # 会员卡管理页面
 │   ├── Orders.tsx      # 订单管理页面
 │   ├── Partners.tsx    # 合作伙伴页面
-│   └── Recovery.tsx    # 权益回收页面
+│   ├── RecoveryPoolPage.tsx # 权益回收池页面
+│   ├── RevenueSharing.tsx   # 分账管理页面
+│   └── Reports.tsx     # 数据报表页面
 ├── services/           # 业务服务层
 │   ├── authService.ts  # 认证服务
 │   ├── cardService.ts  # 会员卡服务

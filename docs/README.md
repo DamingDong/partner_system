@@ -26,6 +26,7 @@
 ### 🎯 **产品文档** (product/)
 - **[产品需求文档](./product/PRD.md)** - 产品功能规格和需求
 - **[用户故事](./product/USER_STORIES.md)** - 用户场景和功能需求
+- **[功能特性列表](./product/FEATURE_LIST.md)** - 完整功能特性和版本规划
 - **[产品经理技能](./product/PRODUCT_MANAGER_SKILLS.md)** - EPIC文档对齐方法论
 - **[协作框架](./product/COLLABORATION_FRAMEWORK.md)** - 跨职能协作规范
 - **EPIC文档** (product/EPICS/)
