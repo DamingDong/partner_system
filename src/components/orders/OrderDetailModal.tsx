@@ -12,7 +12,7 @@ import {
   User, 
   CreditCard, 
   Calendar,
-  DollarSign,
+  Coins,
   FileText,
   Clock,
   Building,
@@ -194,7 +194,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <DollarSign className="h-5 w-5 mr-2" />
+                  <Coins className="h-5 w-5 mr-2" />
                   金额信息
                 </CardTitle>
               </CardHeader>

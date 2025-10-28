@@ -85,6 +85,11 @@ export default function Partners() {
     return <LoadingSkeleton type="table" count={5} />;
   }
 
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [channelCode, setChannelCode] = useState('');
+  const [parentPartner, setParentPartner] = useState<string>('none');
+
   if (error) {
     return (
       <EmptyState
@@ -95,11 +100,6 @@ export default function Partners() {
       />
     );
   }
-
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [companyName, setCompanyName] = useState('');
-  const [channelCode, setChannelCode] = useState('');
-  const [parentPartner, setParentPartner] = useState<string>('none');
 
   const handleSubmit = async () => {
     if (!companyName || !channelCode) {

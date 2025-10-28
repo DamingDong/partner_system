@@ -11,7 +11,6 @@ import {
   Settings,
   LogOut,
   Home,
-  Monitor,
   RefreshCw,
 } from 'lucide-react';
 

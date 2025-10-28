@@ -4,7 +4,7 @@ import { MembershipCard, CardType, CardStatus, CardBatch, RedemptionRequest, Rec
 import { CardService } from '@/services/cardService';
 import { RecoveryPoolService } from '@/services/recoveryPoolService';
 import { useAuthStore } from '@/store/authStore';
-import { CardActivationModal } from '@/components/cards/CardActivationModal';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -940,7 +940,16 @@ const Cards: React.FC = () => {
                             </Button>
                             
                             {card.status === CardStatus.UNACTIVATED && (
-                              
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedCard(card);
+                                  setShowActivationModal(true);
+                                }}
+                              >
+                                激活
+                              </Button>
                             )}
                             {(card.status === CardStatus.BOUND || card.status === CardStatus.EXPIRED) && (
                               <Dialog open={showRedemptionModal} onOpenChange={setShowRedemptionModal}>

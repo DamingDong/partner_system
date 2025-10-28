@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import { 
   TrendingUp, 
   TrendingDown, 
-  DollarSign, 
+  Coins, 
   Users, 
   RefreshCw,
   Plus,
@@ -134,7 +134,7 @@ export default function RevenueSharing() {
     {
       title: '总分账金额',
       value: `¥${stats.totalSharing.toLocaleString()}`,
-      icon: DollarSign,
+      icon: Coins,
       trend: '+12%',
       trendUp: true,
     },
