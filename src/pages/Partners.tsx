@@ -81,14 +81,14 @@ export default function Partners() {
       totalRevenue: partners.reduce((sum, p) => sum + (p.commissionRate * 100000), 0),
     };
 
-  if (isLoading) {
-    return <LoadingSkeleton type="table" count={5} />;
-  }
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [channelCode, setChannelCode] = useState('');
   const [parentPartner, setParentPartner] = useState<string>('none');
+
+  if (isLoading) {
+    return <LoadingSkeleton type="table" count={5} />;
+  }
 
   if (error) {
     return (

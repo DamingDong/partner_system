@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MembershipCard, CardType, CardStatus, CardBatch, RedemptionRequest, RecoveryPool } from '@/types';
+import { 
+  MembershipCard, 
+  CardType, 
+  CardStatus, 
+  CardBatch, 
+  RedemptionRequest, 
+  RecoveryPool, 
+  DeviceInfo,
+  DeviceRecoveryStatus 
+} from '@/types';
 import { CardService } from '@/services/cardService';
 import { RecoveryPoolService } from '@/services/recoveryPoolService';
+import { DeviceService } from '@/services/deviceService';
 import { useAuthStore } from '@/store/authStore';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +28,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { CardActivationModal } from '@/components/cards/CardActivationModal';
 import { 
   Search, 
   Plus, 
@@ -71,6 +82,18 @@ const Cards: React.FC = () => {
   const [exchangeCardType, setExchangeCardType] = useState<'monthly' | 'yearly'>('monthly');
   const [exchangeRequiredDays, setExchangeRequiredDays] = useState(30);
   const [exchangeLoading, setExchangeLoading] = useState(false);
+  
+  // MAC地址绑定相关状态
+  const [showMacBindingModal, setShowMacBindingModal] = useState(false);
+  const [macAddress, setMacAddress] = useState('');
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [bindingLoading, setBindingLoading] = useState(false);
+  const [deviceValidationError, setDeviceValidationError] = useState('');
+  
+  // 批量导入相关状态
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [showImportErrors, setShowImportErrors] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -156,17 +179,59 @@ const Cards: React.FC = () => {
     }
 
     try {
+      setImportProgress({ current: 0, total: 0 });
+      setImportErrors([]);
+      
       // 如果是管理员，使用默认的partnerId
       const partnerId = user?.partnerId || 'partner-001';
       
-      await CardService.importCards(partnerId, importFile);
-      toast.success('会员卡导入成功！');
-      setShowImportDialog(false);
-      setImportFile(null);
+      // 验证文件类型和大小
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (importFile.size > maxSize) {
+        toast.error('文件大小不能超过10MB');
+        return;
+      }
+      
+      // 验证文件类型
+      const allowedTypes = [
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/csv'
+      ];
+      if (!allowedTypes.includes(importFile.type) && !importFile.name.match(/\.(xlsx|xls|csv)$/i)) {
+        toast.error('请上传Excel或CSV格式的文件');
+        return;
+      }
+      
+      // 模拟导入进度
+      setImportProgress({ current: 0, total: 100 });
+      
+      // 分批处理导入，避免内存溢出
+      const result = await CardService.importCards(partnerId, importFile, (progress) => {
+        setImportProgress(progress);
+      });
+      
+      if (result.errors && result.errors.length > 0) {
+        setImportErrors(result.errors);
+        setShowImportErrors(true);
+        toast.error(`导入完成，但有${result.errors.length}条错误`);
+      } else {
+        toast.success(`成功导入${result.successCount || 0}张会员卡！`);
+        setShowImportDialog(false);
+        setImportFile(null);
+      }
+      
       loadData(); // 重新加载数据
-    } catch (error) {
+    } catch (error: any) {
       console.error('导入失败:', error);
-      toast.error('导入失败，请检查文件格式');
+      const errorMessage = error?.message || '导入失败，请检查文件格式和内容';
+      toast.error(errorMessage);
+      
+      // 记录详细错误信息
+      setImportErrors([errorMessage]);
+      setShowImportErrors(true);
+    } finally {
+      setImportProgress({ current: 0, total: 0 });
     }
   };
 
@@ -423,6 +488,121 @@ const Cards: React.FC = () => {
     }
   };
 
+  // MAC地址绑定相关处理函数
+  const handleMacAddressChange = async (value: string) => {
+    setMacAddress(value);
+    setDeviceValidationError('');
+    
+    // 验证MAC地址格式
+    const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+    if (!macRegex.test(value)) {
+      setDeviceValidationError('请输入有效的MAC地址格式（如：00:1B:44:11:3A:B7）');
+      setDeviceInfo(null);
+      return;
+    }
+    
+    // 检查设备回收状态
+    try {
+      const device = await DeviceService.getDeviceByMacAddress(value);
+      if (device) {
+        setDeviceInfo(device);
+        
+        // 检查回收限制
+        if (device.recoveryStatus === DeviceRecoveryStatus.BLOCKED) {
+          setDeviceValidationError('该设备已达到最大回收次数限制（3次），无法绑定');
+        } else if (device.recoveryStatus === DeviceRecoveryStatus.LIMITED) {
+          setDeviceValidationError(`该设备已回收${device.recoveryCount}次，请谨慎操作`);
+        }
+      } else {
+        setDeviceInfo(null);
+      }
+    } catch (error) {
+      console.error('查询设备信息失败:', error);
+      setDeviceInfo(null);
+    }
+  };
+
+  const handleBindMacAddress = async () => {
+    if (!selectedCard) return;
+    
+    if (!macAddress.trim()) {
+      toast.error('请输入MAC地址');
+      return;
+    }
+    
+    if (deviceValidationError) {
+      toast.error('请先解决设备验证问题');
+      return;
+    }
+    
+    try {
+      setBindingLoading(true);
+      
+      // 验证会员卡状态
+      if (selectedCard.status !== CardStatus.PENDING_BIND) {
+        toast.error('只有待绑定的会员卡才能绑定MAC地址');
+        return;
+      }
+      
+      // 执行绑定操作
+      await CardService.bindMacAddress(selectedCard.id, macAddress);
+      
+      toast.success('MAC地址绑定成功！');
+      setShowMacBindingModal(false);
+      setMacAddress('');
+      setDeviceInfo(null);
+      
+      // 重新加载数据
+      loadData();
+    } catch (error: any) {
+      console.error('绑定失败:', error);
+      const errorMessage = error?.message || '绑定失败，请重试';
+      toast.error(errorMessage);
+    } finally {
+      setBindingLoading(false);
+    }
+  };
+
+  const handleBatchMacBinding = async (cardIds: string[], macAddresses: string[]) => {
+    try {
+      setBindingLoading(true);
+      
+      // 验证输入数据
+      if (cardIds.length !== macAddresses.length) {
+        toast.error('会员卡数量和MAC地址数量不匹配');
+        return;
+      }
+      
+      // 批量绑定
+      const results = await CardService.batchBindMacAddress(cardIds, macAddresses);
+      
+      // 统计结果
+      const successCount = results.filter(r => r.success).length;
+      const errorCount = results.filter(r => !r.success).length;
+      
+      if (errorCount > 0) {
+        const errorMessages = results
+          .filter(r => !r.success)
+          .map(r => `卡号${r.cardId}: ${r.error}`)
+          .join('\r\n');
+        
+        toast.error(`批量绑定完成，成功${successCount}个，失败${errorCount}个`);
+        setImportErrors(results.filter(r => !r.success).map(r => r.error || '未知错误'));
+        setShowImportErrors(true);
+      } else {
+        toast.success(`成功绑定${successCount}个MAC地址`);
+      }
+      
+      // 重新加载数据
+      loadData();
+    } catch (error: any) {
+      console.error('批量绑定失败:', error);
+      toast.error('批量绑定失败，请重试');
+    } finally {
+      setBindingLoading(false);
+    }
+  };
+
   const getRedemptionStatusBadge = (status: string) => {
     const statusMap = {
       pending: { label: '待处理', variant: 'secondary' as const },
@@ -462,8 +642,62 @@ const Cards: React.FC = () => {
       bound: cards.filter(c => c.status === CardStatus.BOUND).length,
       active: cards.filter(c => c.status === CardStatus.ACTIVE).length,
       expired: cards.filter(c => c.status === CardStatus.EXPIRED).length,
+      cancelled: cards.filter(c => c.status === CardStatus.CANCELLED).length,
     };
     return stats;
+  };
+
+  // 会员卡状态流转验证
+  const validateCardStatusTransition = (currentStatus: CardStatus, targetStatus: CardStatus): boolean => {
+    const validTransitions: Record<CardStatus, CardStatus[]> = {
+      [CardStatus.PENDING_BIND]: [CardStatus.BOUND, CardStatus.CANCELLED],
+      [CardStatus.BOUND]: [CardStatus.ACTIVE, CardStatus.CANCELLED],
+      [CardStatus.ACTIVE]: [CardStatus.EXPIRED, CardStatus.CANCELLED],
+      [CardStatus.EXPIRED]: [CardStatus.CANCELLED],
+      [CardStatus.CANCELLED]: [] // 已销卡状态不可再流转
+    };
+    
+    return validTransitions[currentStatus].includes(targetStatus);
+  };
+
+  // 获取允许的状态流转选项
+  const getAllowedStatusTransitions = (currentStatus: CardStatus): CardStatus[] => {
+    const transitions: Record<CardStatus, CardStatus[]> = {
+      [CardStatus.PENDING_BIND]: [CardStatus.BOUND, CardStatus.CANCELLED],
+      [CardStatus.BOUND]: [CardStatus.ACTIVE, CardStatus.CANCELLED],
+      [CardStatus.ACTIVE]: [CardStatus.EXPIRED, CardStatus.CANCELLED],
+      [CardStatus.EXPIRED]: [CardStatus.CANCELLED],
+      [CardStatus.CANCELLED]: []
+    };
+    
+    return transitions[currentStatus];
+  };
+
+  // 状态流转处理
+  const handleStatusChange = async (cardId: string, targetStatus: CardStatus) => {
+    try {
+      const card = cards.find(c => c.id === cardId);
+      if (!card) {
+        toast.error('未找到对应的会员卡');
+        return;
+      }
+
+      // 验证状态流转是否合法
+      if (!validateCardStatusTransition(card.status, targetStatus)) {
+        toast.error(`无法从${getStatusBadge(card.status).props.children}状态流转到${getStatusBadge(targetStatus).props.children}状态`);
+        return;
+      }
+
+      // 执行状态变更
+      await CardService.updateCardStatus(cardId, targetStatus);
+      
+      toast.success('状态更新成功');
+      loadData(); // 重新加载数据
+    } catch (error: any) {
+      console.error('状态更新失败:', error);
+      const errorMessage = error?.message || '状态更新失败，请重试';
+      toast.error(errorMessage);
+    }
   };
 
   const stats = getCardStats();
@@ -496,7 +730,7 @@ const Cards: React.FC = () => {
                   导入会员卡
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>批量导入会员卡</DialogTitle>
                 </DialogHeader>
@@ -510,15 +744,65 @@ const Cards: React.FC = () => {
                       onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      支持 Excel (.xlsx, .xls) 和 CSV 格式
+                      支持 Excel (.xlsx, .xls) 和 CSV 格式，文件大小不超过10MB
                     </p>
                   </div>
+                  
+                  {/* 导入进度显示 */}
+                  {importProgress.total > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>导入进度</span>
+                        <span>{importProgress.current}/{importProgress.total}</span>
+                      </div>
+                      <Progress 
+                        value={(importProgress.current / importProgress.total) * 100} 
+                        className="h-2"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* 错误信息显示 */}
+                  {showImportErrors && importErrors.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-red-800">导入错误</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setShowImportErrors(false)}
+                          className="h-6 px-2 text-red-600"
+                        >
+                          隐藏
+                        </Button>
+                      </div>
+                      <div className="max-h-32 overflow-y-auto">
+                        {importErrors.map((error, index) => (
+                          <p key={index} className="text-xs text-red-600 mb-1">
+                            • {error}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowImportDialog(false);
+                        setImportFile(null);
+                        setImportErrors([]);
+                        setShowImportErrors(false);
+                      }}
+                    >
                       取消
                     </Button>
-                    <Button onClick={handleImportCards} disabled={!importFile}>
-                      导入
+                    <Button 
+                      onClick={handleImportCards} 
+                      disabled={!importFile || importProgress.total > 0}
+                    >
+                      {importProgress.total > 0 ? '导入中...' : '导入'}
                     </Button>
                   </div>
                 </div>
@@ -596,8 +880,8 @@ const Cards: React.FC = () => {
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">待激活</p>
-              <p className="text-2xl font-bold text-orange-600">{stats.unactivated}</p>
+              <p className="text-sm font-medium text-muted-foreground">待绑定</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.pendingBind}</p>
             </div>
             <Calendar className="h-5 w-5 text-orange-500" />
           </div>
@@ -939,7 +1223,119 @@ const Cards: React.FC = () => {
                               详情
                             </Button>
                             
-                            {card.status === CardStatus.UNACTIVATED && (
+                            {/* MAC地址绑定按钮 */}
+                            {card.status === CardStatus.PENDING_BIND && (
+                              <Dialog open={showMacBindingModal} onOpenChange={setShowMacBindingModal}>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setSelectedCard(card)}
+                                    className="h-8 px-3"
+                                  >
+                                    <Activity className="h-3 w-3 mr-1" />
+                                    绑定MAC
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>绑定MAC地址</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                      <h4 className="font-medium mb-2">会员卡信息</h4>
+                                      <p className="text-sm">卡号: {card.cardNumber}</p>
+                                      <p className="text-sm">状态: {getStatusBadge(card.status)}</p>
+                                    </div>
+                                    
+                                    <div>
+                                      <Label htmlFor="macAddress">MAC地址</Label>
+                                      <Input
+                                        id="macAddress"
+                                        placeholder="请输入MAC地址（如：00:1B:44:11:3A:B7）"
+                                        value={macAddress}
+                                        onChange={(e) => handleMacAddressChange(e.target.value)}
+                                        className={deviceValidationError ? 'border-red-500' : ''}
+                                      />
+                                      {deviceValidationError && (
+                                        <p className="text-xs text-red-500 mt-1">{deviceValidationError}</p>
+                                      )}
+                                    </div>
+                                    
+                                    {/* 设备信息显示 */}
+                                    {deviceInfo && (
+                                      <div className={`p-3 rounded-lg border ${
+                                        deviceInfo.recoveryStatus === DeviceRecoveryStatus.BLOCKED 
+                                          ? 'bg-red-50 border-red-200' 
+                                          : deviceInfo.recoveryStatus === DeviceRecoveryStatus.LIMITED
+                                          ? 'bg-yellow-50 border-yellow-200'
+                                          : 'bg-green-50 border-green-200'
+                                      }`}>
+                                        <h5 className="font-medium text-sm mb-2">设备信息</h5>
+                                        <div className="text-xs space-y-1">
+                                          <p>MAC地址: {deviceInfo.macAddress}</p>
+                                          <p>设备名称: {deviceInfo.deviceName}</p>
+                                          <p>回收次数: {deviceInfo.recoveryCount}次</p>
+                                          <p>回收状态: 
+                                            <Badge 
+                                              variant={
+                                                deviceInfo.recoveryStatus === DeviceRecoveryStatus.BLOCKED 
+                                                  ? 'destructive' 
+                                                  : deviceInfo.recoveryStatus === DeviceRecoveryStatus.LIMITED
+                                                  ? 'secondary'
+                                                  : 'default'
+                                              }
+                                              className="ml-2"
+                                            >
+                                              {deviceInfo.recoveryStatus === DeviceRecoveryStatus.BLOCKED 
+                                                ? '禁止回收' 
+                                                : deviceInfo.recoveryStatus === DeviceRecoveryStatus.LIMITED
+                                                ? '回收受限'
+                                                : '可回收'}
+                                            </Badge>
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    <div className="flex justify-end space-x-2">
+                                      <Button 
+                                        variant="outline" 
+                                        onClick={() => {
+                                          setShowMacBindingModal(false);
+                                          setMacAddress('');
+                                          setDeviceInfo(null);
+                                          setDeviceValidationError('');
+                                        }}
+                                      >
+                                        取消
+                                      </Button>
+                                      <Button 
+                                        onClick={handleBindMacAddress}
+                                        disabled={
+                                          bindingLoading || 
+                                          !macAddress.trim() || 
+                                          !!deviceValidationError ||
+                                          (deviceInfo && deviceInfo.recoveryStatus === DeviceRecoveryStatus.BLOCKED)
+                                        }
+                                      >
+                                        {bindingLoading ? (
+                                          <>
+                                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                            绑定中...
+                                          </>
+                                        ) : (
+                                          '确认绑定'
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                            
+                            {/* 激活按钮 */}
+                            {card.status === CardStatus.BOUND && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -951,6 +1347,8 @@ const Cards: React.FC = () => {
                                 激活
                               </Button>
                             )}
+                            
+                            {/* 权益回收按钮 */}
                             {(card.status === CardStatus.BOUND || card.status === CardStatus.EXPIRED) && (
                               <Dialog open={showRedemptionModal} onOpenChange={setShowRedemptionModal}>
                                 <DialogTrigger asChild>

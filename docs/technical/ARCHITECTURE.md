@@ -513,10 +513,121 @@ spec:
             cpu: "1000m"
 ```
 
+## 🚀 MVP阶段性技术实现规划
+
+### 里程碑1：硬件销售闭环 (第8周)
+**技术目标**: 构建核心业务数据模型和基础服务
+
+#### 核心数据模型实现
+```typescript
+// 会员卡核心模型
+interface Card {
+  id: string;
+  cardNumber: string;
+  status: 'PENDING_BIND' | 'BOUND' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  partnerId: string;
+  macAddress?: string;
+  activationTime?: Date;
+  expiryTime?: Date;
+}
+
+// 订单核心模型
+interface Order {
+  id: string;
+  orderNumber: string;
+  orderType: 'ACTIVATION' | 'SUBSCRIPTION';
+  partnerId: string;
+  cardId?: string;
+  amount: number;
+  status: 'PENDING' | 'COMPLETED' | 'FAILED';
+}
+```
+
+#### 基础服务架构
+- **前端架构**: React + TypeScript + Vite + TailwindCSS
+- **状态管理**: Zustand轻量级状态管理
+- **数据获取**: React Query实现数据缓存和同步
+- **路由管理**: React Router v6实现SPA路由
+
+### 里程碑2：业务数据透明化 (第10周)
+**技术目标**: 实现数据权限隔离和高级查询功能
+
+#### 权限控制实现
+```typescript
+// 基于角色的权限控制
+interface Permission {
+  resource: 'cards' | 'orders' | 'partners';
+  action: 'read' | 'write' | 'delete';
+  scope: 'all' | 'self';
+}
+
+// 权限验证中间件
+const checkPermission = (resource: string, action: string, scope: string) => {
+  // 实现数据权限过滤逻辑
+  return (req, res, next) => {
+    // 根据用户角色和权限过滤数据
+  };
+};
+```
+
+#### 高级查询优化
+- **数据库索引优化**: 关键查询字段建立索引
+- **查询缓存**: Redis实现热点数据缓存
+- **分页优化**: 游标分页替代传统分页
+- **批量导出**: 流式导出避免内存溢出
+
+### 里程碑3：系统稳定性和性能 (第12周)
+**技术目标**: 系统性能优化和稳定性保障
+
+#### 性能监控体系
+```typescript
+// 性能监控配置
+interface PerformanceConfig {
+  // 前端性能监控
+  frontend: {
+    pageLoad: { threshold: 3000 }, // 3秒阈值
+    apiResponse: { threshold: 2000 }, // 2秒阈值
+    userInteraction: { threshold: 100 } // 100ms阈值
+  };
+  
+  // 后端性能监控
+  backend: {
+    database: { queryThreshold: 100 }, // 100ms阈值
+    api: { responseThreshold: 500 }, // 500ms阈值
+    memory: { usageThreshold: 80 } // 80%内存使用率
+  };
+}
+```
+
+#### 错误处理和监控
+- **前端错误监控**: 全局错误捕获和上报
+- **后端日志系统**: 结构化日志和错误追踪
+- **健康检查**: 服务健康状态监控
+- **告警机制**: 关键指标异常告警
+
+### 技术风险控制策略
+
+#### 技术选型风险控制
+- **成熟技术栈**: 选择React、Node.js等成熟技术
+- **渐进式架构**: 微服务架构支持渐进式开发
+- **容器化部署**: Docker容器化降低部署风险
+
+#### 性能风险控制
+- **性能基准测试**: 每个里程碑进行性能测试
+- **容量规划**: 基于业务量进行容量规划
+- **负载测试**: 模拟真实用户负载测试
+
+#### 安全风险控制
+- **数据加密**: 敏感数据AES-256加密存储
+- **权限验证**: 基于角色的细粒度权限控制
+- **审计日志**: 完整操作审计和追踪
+
 ---
 
-**文档版本**: v1.0  
+**文档版本**: v1.1  
 **创建日期**: 2025-01-05  
+**更新日期**: 2025-10-28  
 **架构师**: AI助手  
 **技术栈**: React + Node.js + PostgreSQL  
-**部署环境**: Docker + Kubernetes
+**部署环境**: Docker + Kubernetes  
+**MVP里程碑**: 硬件销售闭环→业务数据透明化→系统稳定性

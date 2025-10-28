@@ -187,6 +187,8 @@ docker run -p 80:80 partner-system
 #### 🎯 **产品文档** - [docs/product/](docs/product/)
 - [产品需求文档](docs/product/PRD.md) - 产品功能规格和需求
 - [用户故事](docs/product/USER_STORIES.md) - 用户场景和功能需求
+- [功能特性列表](docs/product/FEATURE_LIST.md) - 完整功能规划和优先级
+- [MVP阶段性里程碑](docs/product/MVP_MILESTONES.md) - **MVP阶段详细规划和进度跟踪**
 - [产品经理技能](docs/product/PRODUCT_MANAGER_SKILLS.md) - EPIC文档对齐方法论
 - [协作框架](docs/product/COLLABORATION_FRAMEWORK.md) - 跨职能协作规范
 - **EPIC文档** - [docs/product/EPICS/](docs/product/EPICS/)
