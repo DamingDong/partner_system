@@ -175,21 +175,54 @@ docker run -p 80:80 partner-system
 - 📖 [安装配置指南](INSTALL.md) - 详细的环境搭建和配置说明
 - 🌿 [Git分支策略](BRANCH_STRATEGY.md) - 代码提交规范和分支管理
 - 📝 [版本更新日志](CHANGELOG.md) - 功能变更和版本历史
+- 🧪 [测试指南](TESTING_GUIDE.md) - 测试覆盖率和组件测试规范
 
-### 完整文档体系
-- 🔧 **开发文档** - [docs/development/](docs/development/) 
-  - [开发指南](docs/development/DEVELOPMENT_GUIDE.md) - 完整开发规范和技术栈使用
-  - [API文档](docs/development/API_DOCUMENTATION.md) - 完整的接口文档和示例
+### 标准化文档体系
 
-- 💼 **业务文档** - [docs/business/](docs/business/)
-  - [业务需求](docs/business/BUSINESS_REQUIREMENTS.md) - 详细业务规则和流程
-  - [架构设计](docs/business/ARCHITECTURE_DESIGN.md) - 系统架构和技术设计
+#### 💼 **业务文档** - [docs/business/](docs/business/)
+- [业务需求文档](docs/business/BRD.md) - 核心业务需求和目标
+- [市场需求文档](docs/business/MRD.md) - 市场分析和产品定位
+- [业务规则](docs/business/BUSINESS_RULES.md) - 详细业务逻辑和约束条件
 
-- 🚀 **部署文档** - [docs/deployment/](docs/deployment/)
-  - [部署指南](docs/deployment/DEPLOYMENT_GUIDE.md) - 完整部署方案和运维指南
+#### 🎯 **产品文档** - [docs/product/](docs/product/)
+- [产品需求文档](docs/product/PRD.md) - 产品功能规格和需求
+- [用户故事](docs/product/USER_STORIES.md) - 用户场景和功能需求
+- [产品经理技能](docs/product/PRODUCT_MANAGER_SKILLS.md) - EPIC文档对齐方法论
+- [协作框架](docs/product/COLLABORATION_FRAMEWORK.md) - 跨职能协作规范
+- **EPIC文档** - [docs/product/EPICS/](docs/product/EPICS/)
+  - [会员卡生命周期](docs/product/EPICS/CARD_LIFECYCLE.md)
+  - [订单管理](docs/product/EPICS/ORDER_MANAGEMENT.md)
+  - [合作伙伴管理](docs/product/EPICS/PARTNER_MANAGEMENT.md)
+  - [权益回收池管理](docs/product/EPICS/RECOVERY_POOL_MANAGEMENT.md)
+  - [收益分成](docs/product/EPICS/REVENUE_SHARING.md)
 
-- 📋 **GitHub文档** - [docs/github/](docs/github/)
-  - GitHub仓库管理和推送指南
+#### 🔧 **技术文档** - [docs/technical/](docs/technical/)
+- [架构设计](docs/technical/ARCHITECTURE.md) - 系统架构和技术设计
+- [开发指南](docs/technical/DEVELOPMENT_GUIDE.md) - 完整开发规范和技术栈使用
+- [测试指南](docs/technical/TESTING_GUIDE.md) - 测试策略和最佳实践
+- [API规范](docs/technical/API_SPECIFICATION.md) - 接口设计和数据格式
+- [Mock API规范](docs/technical/API_MOCK_SPECIFICATION.md) - 开发环境接口模拟
+- [系统集成](docs/technical/SYSTEM_INTEGRATION.md) - 第三方系统集成方案
+- [架构边界](docs/technical/ARCHITECTURE_BOUNDARY.md) - 系统职责和边界定义
+
+#### 🚀 **部署文档** - [docs/deployment/](docs/deployment/)
+- [部署指南](docs/deployment/DEPLOYMENT_GUIDE.md) - 完整部署方案和运维指南
+
+#### 📋 **GitHub文档** - [docs/github/](docs/github/)
+- [GitHub仓库创建](docs/github/CREATE_GITHUB_REPO.md)
+- [GitHub推送指南](docs/github/GITHUB_PUSH_GUIDE.md)
+- [立即推送指南](docs/github/PUSH_IMMEDIATE.md)
+
+#### 📚 **归档文档** - [docs/archive/](docs/archive/)
+- 历史版本和过时文档存档，包含业务、开发等历史文档
+
+#### 🤖 **技能定义** - [.codebuddy/skills/](.codebuddy/skills/)
+- [产品管理技能](.codebuddy/skills/product-management.md)
+- [API集成技能](.codebuddy/skills/api-integration.md)
+- [React开发技能](.codebuddy/skills/react-development.md)
+- [TypeScript开发技能](.codebuddy/skills/typescript-development.md)
+- [测试策略技能](.codebuddy/skills/testing-strategy.md)
+- [部署策略技能](.codebuddy/skills/deployment-strategy.md)
 
 ### 文档索引
 完整的文档导航和使用指南请查看：[docs/README.md](docs/README.md)

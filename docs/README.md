@@ -8,6 +8,7 @@
 - **[README.md](../README.md)** - 项目概述、快速开始、技术栈介绍
 - **[INSTALL.md](../INSTALL.md)** - 详细安装配置指南、环境要求
 - **[CHANGELOG.md](../CHANGELOG.md)** - 版本更新日志、功能变更记录
+- **[TESTING_GUIDE.md](../TESTING_GUIDE.md)** - 测试覆盖率和组件测试规范
 
 ### Git工作流程
 - **[BRANCH_STRATEGY.md](../BRANCH_STRATEGY.md)** - Git分支策略、代码提交规范
@@ -17,122 +18,95 @@
 
 ## 📂 docs/ 文档目录
 
-### 🔧 开发文档 (development/)
-- **[DEVELOPMENT_GUIDE.md](./development/DEVELOPMENT_GUIDE.md)** - 完整开发指南
-  - 项目架构说明
-  - 技术栈详解
-  - 编码规范
-  - 权限控制系统
-  - 性能优化指南
-  - 调试技巧
+### 💼 **业务文档** (business/)
+- **[业务需求文档](./business/BRD.md)** - 核心业务需求和目标
+- **[市场需求文档](./business/MRD.md)** - 市场分析和产品定位
+- **[业务规则](./business/BUSINESS_RULES.md)** - 详细业务逻辑和约束条件
 
-- **[API_DOCUMENTATION.md](./development/API_DOCUMENTATION.md)** - API接口文档
-  - 认证授权接口
-  - 会员卡管理接口
-  - 合作伙伴管理接口
-  - 分账管理接口
-  - 权益回收池接口
-  - 错误码说明
+### 🎯 **产品文档** (product/)
+- **[产品需求文档](./product/PRD.md)** - 产品功能规格和需求
+- **[用户故事](./product/USER_STORIES.md)** - 用户场景和功能需求
+- **[产品经理技能](./product/PRODUCT_MANAGER_SKILLS.md)** - EPIC文档对齐方法论
+- **[协作框架](./product/COLLABORATION_FRAMEWORK.md)** - 跨职能协作规范
+- **EPIC文档** (product/EPICS/)
+  - [会员卡生命周期](./product/EPICS/CARD_LIFECYCLE.md)
+  - [订单管理](./product/EPICS/ORDER_MANAGEMENT.md)
+  - [合作伙伴管理](./product/EPICS/PARTNER_MANAGEMENT.md)
+  - [权益回收池管理](./product/EPICS/RECOVERY_POOL_MANAGEMENT.md)
+  - [收益分成](./product/EPICS/REVENUE_SHARING.md)
 
-- **[TESTING_GUIDE.md](./development/TESTING_GUIDE.md)** - 测试配置指南
-  - Vitest测试框架配置
-  - 测试脚本和工具
-  - 测试文件结构规范
-  - 覆盖率要求和报告
-  - 测试最佳实践
+### 🔧 **技术文档** (technical/)
+- **[架构设计](./technical/ARCHITECTURE.md)** - 系统架构和技术设计
+- **[开发指南](./technical/DEVELOPMENT_GUIDE.md)** - 完整开发规范和技术栈使用
+- **[测试指南](./technical/TESTING_GUIDE.md)** - 测试策略和最佳实践
+- **[API规范](./technical/API_SPECIFICATION.md)** - 接口设计和数据格式
+- **[Mock API规范](./technical/API_MOCK_SPECIFICATION.md)** - 开发环境接口模拟
+- **[系统集成](./technical/SYSTEM_INTEGRATION.md)** - 第三方系统集成方案
+- **[架构边界](./technical/ARCHITECTURE_BOUNDARY.md)** - 系统职责和边界定义
 
-### 💼 业务文档 (business/)
-- **[BUSINESS_REQUIREMENTS.md](./business/BUSINESS_REQUIREMENTS.md)** - 业务需求文档
-  - 项目背景与目标
-  - 核心业务流程
-  - 用户界面设计需求
-  - 会员卡业务规则
-  - 权益回收池业务规则
-  - 报表系统需求
+### 🚀 **部署文档** (deployment/)
+- **[部署指南](./deployment/DEPLOYMENT_GUIDE.md)** - 完整部署方案和运维指南
 
-- **[ARCHITECTURE_DESIGN.md](./business/ARCHITECTURE_DESIGN.md)** - 系统架构设计
-  - 整体架构概览
-  - 技术栈选型
-  - 分层架构设计
-  - 模块化设计
-  - 安全架构设计
-  - 性能架构设计
+### 📋 **GitHub文档** (github/)
+- **[GitHub仓库创建](./github/CREATE_GITHUB_REPO.md)**
+- **[GitHub推送指南](./github/GITHUB_PUSH_GUIDE.md)**
+- **[立即推送指南](./github/PUSH_IMMEDIATE.md)**
 
-- **[PRODUCT_REQUIREMENTS.md](./business/PRODUCT_REQUIREMENTS.md)** - 产品需求文档(PRD)
-  - 项目概述和产品定位
-  - 用户角色与权限系统
-  - 会员卡管理系统详细设计
-  - 分账管理系统规则引擎
-  - 对账管理系统流程
-  - 技术实现细节
+### 📚 **归档文档** (archive/)
+- 历史版本和过时文档存档，包含业务、开发等历史文档
 
-- **[BUSINESS_PROCESS_SUPPLEMENT.md](./business/BUSINESS_PROCESS_SUPPLEMENT.md)** - 业务流程补充
-  - 条件式分账业务流程
-  - 会员卡全生命周期流程
-  - 分账计算完整流程
-  - 异常处理机制
-
-- **[RECOVERY_POOL_ENHANCEMENT.md](./business/RECOVERY_POOL_ENHANCEMENT.md)** - 权益回收池功能增强
-  - 回收池管理系统设计
-  - 业务流程说明
-  - UI设计亮点
-  - 技术特点分析
-
-- **[权益回收池功能开发总结_2024_工作记忆.md](./business/权益回收池功能开发总结_2024_工作记忆.md)** - 权益回收池功能开发总结
-  - 核心功能实现
-  - 技术实现细节
-  - 开发成果统计
-  - 下阶段开发计划
-
-### 🚀 部署文档 (deployment/)
-- **[DEPLOYMENT_GUIDE.md](./deployment/DEPLOYMENT_GUIDE.md)** - 部署指南
-  - 本地开发环境
-  - 构建流程
-  - 静态部署配置
-  - Docker容器化
-  - 云平台部署
-  - CI/CD流水线
-  - 监控与日志
-
-### 📋 GitHub相关文档 (github/)
-- **[CREATE_GITHUB_REPO.md](./github/CREATE_GITHUB_REPO.md)** - GitHub仓库创建指南
-- **[GITHUB_PUSH_GUIDE.md](./github/GITHUB_PUSH_GUIDE.md)** - GitHub推送指南
-- **[PUSH_IMMEDIATE.md](./github/PUSH_IMMEDIATE.md)** - 立即推送指南
+### 🤖 **技能定义** (.codebuddy/skills/)
+- **[产品管理技能](../.codebuddy/skills/product-management.md)**
+- **[API集成技能](../.codebuddy/skills/api-integration.md)**
+- **[React开发技能](../.codebuddy/skills/react-development.md)**
+- **[TypeScript开发技能](../.codebuddy/skills/typescript-development.md)**
+- **[测试策略技能](../.codebuddy/skills/testing-strategy.md)**
+- **[部署策略技能](../.codebuddy/skills/deployment-strategy.md)**
 
 ## 📖 文档使用指南
 
 ### 新开发者入门路径
 1. **快速了解** → [README.md](../README.md)
 2. **环境搭建** → [INSTALL.md](../INSTALL.md) 
-3. **开发规范** → [DEVELOPMENT_GUIDE.md](./development/DEVELOPMENT_GUIDE.md)
-4. **业务理解** → [BUSINESS_REQUIREMENTS.md](./business/BUSINESS_REQUIREMENTS.md)
-5. **架构学习** → [ARCHITECTURE_DESIGN.md](./business/ARCHITECTURE_DESIGN.md)
+3. **开发规范** → [DEVELOPMENT_GUIDE.md](./technical/DEVELOPMENT_GUIDE.md)
+4. **业务理解** → [业务需求文档](./business/BRD.md)
+5. **架构学习** → [架构设计](./technical/ARCHITECTURE.md)
 
 ### 不同角色的文档重点
 
 #### 🧑‍💻 前端开发者
-- [DEVELOPMENT_GUIDE.md](./development/DEVELOPMENT_GUIDE.md) - 开发环境、编码规范
-- [API_DOCUMENTATION.md](./development/API_DOCUMENTATION.md) - API接口使用
-- [ARCHITECTURE_DESIGN.md](./business/ARCHITECTURE_DESIGN.md) - 前端架构设计
+- [开发指南](./technical/DEVELOPMENT_GUIDE.md) - 开发环境、编码规范
+- [API规范](./technical/API_SPECIFICATION.md) - API接口使用
+- [架构设计](./technical/ARCHITECTURE.md) - 前端架构设计
 
 #### 🏗️ 架构师
-- [ARCHITECTURE_DESIGN.md](./business/ARCHITECTURE_DESIGN.md) - 系统架构设计
-- [BUSINESS_REQUIREMENTS.md](./business/BUSINESS_REQUIREMENTS.md) - 业务需求分析
-- [权益回收池功能开发总结_2024_工作记忆.md](./business/权益回收池功能开发总结_2024_工作记忆.md) - 核心功能设计
+- [架构设计](./technical/ARCHITECTURE.md) - 系统架构设计
+- [架构边界](./technical/ARCHITECTURE_BOUNDARY.md) - 系统边界定义
+- [业务需求文档](./business/BRD.md) - 业务需求分析
 
 #### ⚙️ 运维工程师  
-- [DEPLOYMENT_GUIDE.md](./deployment/DEPLOYMENT_GUIDE.md) - 部署运维指南
+- [部署指南](./deployment/DEPLOYMENT_GUIDE.md) - 部署运维指南
 - [INSTALL.md](../INSTALL.md) - 环境配置要求
 
 #### 📊 产品经理
-- [BUSINESS_REQUIREMENTS.md](./business/BUSINESS_REQUIREMENTS.md) - 业务需求与规则
-- [README.md](../README.md) - 产品功能概览
-- [CHANGELOG.md](../CHANGELOG.md) - 版本迭代记录
+- [业务需求文档](./business/BRD.md) - 业务需求与规则
+- [产品需求文档](./product/PRD.md) - 产品功能规格
+- [用户故事](./product/USER_STORIES.md) - 用户场景需求
+- [EPIC文档](./product/EPICS/) - 产品功能模块
+- [协作框架](./product/COLLABORATION_FRAMEWORK.md) - 跨职能协作
 
 #### 🧪 测试工程师
-- [DEVELOPMENT_GUIDE.md](./development/DEVELOPMENT_GUIDE.md) - 测试策略部分
-- [API_DOCUMENTATION.md](./development/API_DOCUMENTATION.md) - API测试用例
-- [BUSINESS_REQUIREMENTS.md](./business/BUSINESS_REQUIREMENTS.md) - 业务规则验证
+- [测试指南](./technical/TESTING_GUIDE.md) - 测试策略和最佳实践
+- [API规范](./technical/API_SPECIFICATION.md) - API测试用例
+- [业务规则](./business/BUSINESS_RULES.md) - 业务规则验证
+
+#### 🤖 AI助手技能定义
+- [产品管理技能](../.codebuddy/skills/product-management.md) - EPIC文档对齐
+- [API集成技能](../.codebuddy/skills/api-integration.md) - 接口开发规范
+- [React开发技能](../.codebuddy/skills/react-development.md) - 组件开发标准
+- [TypeScript开发技能](../.codebuddy/skills/typescript-development.md) - 类型安全规范
+- [测试策略技能](../.codebuddy/skills/testing-strategy.md) - 测试覆盖要求
+- [部署策略技能](../.codebuddy/skills/deployment-strategy.md) - 部署最佳实践
 
 ## 🔄 文档维护
 
