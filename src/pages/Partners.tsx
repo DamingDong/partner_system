@@ -81,6 +81,11 @@ export default function Partners() {
       totalRevenue: partners.reduce((sum, p) => sum + (p.commissionRate * 100000), 0),
     };
 
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [channelCode, setChannelCode] = useState('');
+  const [parentPartner, setParentPartner] = useState<string>('none');
+
   if (isLoading) {
     return <LoadingSkeleton type="table" count={5} />;
   }
@@ -95,6 +100,28 @@ export default function Partners() {
       />
     );
   }
+
+  const handleSubmit = async () => {
+    if (!companyName || !channelCode) {
+      alert('公司名称和渠道Code为必填项');
+      return;
+    }
+    try {
+      await PartnerService.createPartner({
+        name: companyName,
+        channelCode,
+        parentId: parentPartner === 'none' ? null : parentPartner,
+        // 其他字段...
+      });
+      setIsDialogOpen(false);
+      setCompanyName('');
+      setChannelCode('');
+      setParentPartner('none');
+      refetch();
+    } catch (error) {
+      console.error('创建合作伙伴失败:', error);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -113,13 +140,62 @@ export default function Partners() {
             刷新
           </Button>
           {hasPermission('partners.create') && (
-            <Button>
+            <Button onClick={() => setIsDialogOpen(true)}>
               <Users className="mr-2 h-4 w-4" />
               添加合作伙伴
             </Button>
           )}
         </div>
       </div>
+
+      {/* 新增合作伙伴对话框 */}
+      {isDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">新增合作伙伴</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">公司名称</label>
+                <Input
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="请输入公司名称"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">渠道Code</label>
+                <Input
+                  value={channelCode}
+                  onChange={(e) => setChannelCode(e.target.value)}
+                  placeholder="请输入渠道Code"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">上级渠道</label>
+                <Select value={parentPartner} onValueChange={setParentPartner}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择上级渠道" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">无</SelectItem>
+                    {partners.map((partner) => (
+                      <SelectItem key={partner.id} value={partner.id}>
+                        {partner.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  取消
+                </Button>
+                <Button onClick={handleSubmit}>提交</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">

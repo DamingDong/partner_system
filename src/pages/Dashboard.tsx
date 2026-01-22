@@ -14,7 +14,7 @@ import {
   CreditCard,
   TrendingUp,
   TrendingDown,
-  DollarSign,
+  Coins,
   Activity,
   RefreshCw,
 } from 'lucide-react';
@@ -114,7 +114,7 @@ export default function Dashboard() {
         <StatsCard
           title="总收入"
           value={`¥${(dashboardData?.totalRevenue || 0).toLocaleString()}`}
-          icon={<DollarSign className="h-4 w-4" />}
+          icon={<Coins className="h-4 w-4" />}
           trend="+15%"
           trendUp={true}
           description="相比上月"
@@ -221,12 +221,16 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">待激活</span>
-                <Badge variant="secondary">{dashboardData?.cardStats?.unactivated || 0}</Badge>
+                <span className="text-sm text-gray-600">待绑定</span>
+                <Badge variant="secondary">{dashboardData?.cardStats?.pendingBind || 0}</Badge>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">已绑定</span>
                 <Badge variant="default">{dashboardData?.cardStats?.bound || 0}</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">已激活</span>
+                <Badge variant="success">{dashboardData?.cardStats?.active || 0}</Badge>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">已过期</span>
@@ -311,7 +315,7 @@ export default function Dashboard() {
                 className="h-12 flex flex-col items-center justify-center"
                 onClick={() => window.location.href = '/reports'}
               >
-                <DollarSign className="h-4 w-4 mb-1" />
+                <Coins className="h-4 w-4 mb-1" />
                 <span className="text-xs">数据报表</span>
               </Button>
             </div>

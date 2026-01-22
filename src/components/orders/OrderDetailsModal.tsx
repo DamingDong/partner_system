@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   CreditCard, 
   User, 
-  DollarSign, 
+  Coins, 
   Calendar,
   TrendingUp,
   Package 
@@ -99,7 +99,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <DollarSign className="h-4 w-4 text-gray-500" />
+                  <Coins className="h-4 w-4 text-gray-500" />
                   <span className="text-sm text-gray-600">金额:</span>
                   <span className="font-semibold text-green-600">
                     ¥{order.amount.toLocaleString()}

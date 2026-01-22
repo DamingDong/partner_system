@@ -101,6 +101,18 @@ export const mockSharingStats = {
     totalPaid: 35050,
     sharingCount: 24,
   },
+  'partner-002': {
+    totalSharing: 95000,
+    totalReceived: 75000,
+    totalPaid: 20000,
+    sharingCount: 18,
+  },
+  'partner-003': {
+    totalSharing: 80000,
+    totalReceived: 60000,
+    totalPaid: 20000,
+    sharingCount: 15,
+  },
   default: {
     totalSharing: 0,
     totalReceived: 0,
@@ -111,6 +123,11 @@ export const mockSharingStats = {
 
 // 获取合作伙伴的分账记录
 export const getSharingRecordsForPartner = (partnerId: string, type: 'received' | 'paid' = 'received') => {
+  if (partnerId === 'all') {
+    // 管理员可以看到所有分账记录
+    return [...mockSharingRecords];
+  }
+  
   if (type === 'received') {
     return mockSharingRecords.filter(record => record.toPartnerId === partnerId);
   } else {
@@ -120,10 +137,26 @@ export const getSharingRecordsForPartner = (partnerId: string, type: 'received' 
 
 // 获取合作伙伴的分账规则
 export const getSharingRulesForPartner = (partnerId: string) => {
+  if (partnerId === 'all') {
+    // 管理员可以看到所有分账规则
+    return [...mockSharingRules];
+  }
+  
   return mockSharingRules.filter(rule => rule.partnerId === partnerId);
 };
 
 // 获取合作伙伴的分账统计
 export const getSharingStatsForPartner = (partnerId: string) => {
+  if (partnerId === 'all') {
+    // 管理员可以看到所有分账统计的汇总
+    const allStats = Object.values(mockSharingStats).filter(stat => stat !== mockSharingStats.default);
+    return {
+      totalSharing: allStats.reduce((sum, stat) => sum + stat.totalSharing, 0),
+      totalReceived: allStats.reduce((sum, stat) => sum + stat.totalReceived, 0),
+      totalPaid: allStats.reduce((sum, stat) => sum + stat.totalPaid, 0),
+      sharingCount: allStats.reduce((sum, stat) => sum + stat.sharingCount, 0),
+    };
+  }
+  
   return mockSharingStats[partnerId as keyof typeof mockSharingStats] || mockSharingStats.default;
 };

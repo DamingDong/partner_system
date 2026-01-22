@@ -1,0 +1,9 @@
+---
+description: 文档优先原则
+alwaysApply: false
+enabled: true
+updatedAt: 2025-10-28T11:14:30.802Z
+provider: 
+---
+
+产品经理技能，工程师技能，都要遵循文档优先原则，先调整各种文档，确认后再去修改代码

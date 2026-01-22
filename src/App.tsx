@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Layout } from '@/components/layout/Layout';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
@@ -15,6 +16,11 @@ import Reconciliation from '@/pages/Reconciliation';
 import Partners from '@/pages/Partners';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
+import { Orders } from '@/pages/Orders';
+import Devices from '@/pages/Devices';
+import CardDetail from '@/pages/CardDetail';
+import DeviceDetail from '@/pages/DeviceDetail';
+import { PERMISSIONS } from '@/types/permissions';
 
 const queryClient = new QueryClient();
 
@@ -28,40 +34,60 @@ const App = () => {
         <ErrorBoundary>
           <BrowserRouter>
             <Routes>
-            {/* Auth Routes */}
-            <Route path="/login" element={
-              isAuthenticated ? <Navigate to="/" replace /> : <Login />
-            } />
-            <Route path="/register" element={
-              isAuthenticated ? <Navigate to="/" replace /> : <Register />
-            } />
-            <Route path="/forgot-password" element={
-              isAuthenticated ? <Navigate to="/" replace /> : <ForgotPassword />
-            } />
-            
-            {/* Protected Routes */}
-            <Route
-              path="/"
-              element={
-                isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="cards" element={<Cards />} />
-              <Route path="revenue-sharing" element={<RevenueSharing />} />
-              <Route path="reconciliation" element={<Reconciliation />} />
-              <Route path="partners" element={<Partners />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
+              {/* Auth Routes */}
+              <Route path="/login" element={
+                isAuthenticated ? <Navigate to="/" replace /> : <Login />
+              } />
+              <Route path="/register" element={
+                isAuthenticated ? <Navigate to="/" replace /> : <Register />
+              } />
+              <Route path="/forgot-password" element={
+                isAuthenticated ? <Navigate to="/" replace /> : <ForgotPassword />
+              } />
+              
+              {/* Protected Routes */}
+              <Route
+                path="/"
+                element={
+                  isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="cards" element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.CARDS_MANAGE}>
+                    <Cards />
+                  </ProtectedRoute>
+                } />
+                <Route path="cards/:id" element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.CARDS_READ}>
+                    <CardDetail />
+                  </ProtectedRoute>
+                } />
+                <Route path="devices" element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.DEVICES_MANAGE}>
+                    <Devices />
+                  </ProtectedRoute>
+                } />
+                <Route path="devices/:id" element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.DEVICES_READ}>
+                    <DeviceDetail />
+                  </ProtectedRoute>
+                } />
+                <Route path="orders" element={<Orders />} />
+                <Route path="revenue-sharing" element={<RevenueSharing />} />
+                <Route path="reconciliation" element={<Reconciliation />} />
+                <Route path="partners" element={<Partners />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </ErrorBoundary>
-    </TooltipProvider>
-  </QueryClientProvider>
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 

@@ -81,7 +81,7 @@ export class MockApiClient {
     }
     
     // 匹配 /dashboard/:partnerId 格式
-    if (url.match(/\/dashboard\/[^\/]+$/)) {
+    if (url.match(/\/dashboard\/[^/]+$/)) {
       return mockApiResponses.dashboardData as { success: boolean; data: T };
     }
     

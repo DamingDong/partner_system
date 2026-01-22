@@ -9,7 +9,8 @@ const isDevelopment = import.meta.env.DEV;
 // 根据环境变量或其他条件决定默认用户
 const getDefaultUser = () => {
   // 开发环境可以有默认用户，生产环境应该是null
-  return isDevelopment ? mockPartnerUser : null; 
+  // 默认设置为管理员用户，以便测试管理员功能
+  return isDevelopment ? mockAdminUser : null; 
 };
 
 const getDefaultPermissions = (user: User | null) => {
@@ -28,6 +29,9 @@ interface AuthState {
   refreshToken: string | null;
   permissions: string[];
   isAuthenticated: boolean;
+  // 派生状态
+  isAdmin: boolean;
+  isPartner: boolean;
   login: (authData: AuthResponse) => void;
   logout: () => void;
   register: (userData: any) => Promise<boolean>;
@@ -43,6 +47,15 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: isDevelopment ? 'mock-refresh-token' : null,
       permissions: getDefaultPermissions(getDefaultUser()),
       isAuthenticated: getDefaultIsAuthenticated(),
+
+      // 派生状态
+      get isAdmin() {
+        return get().user?.role === 'ADMIN';
+      },
+      
+      get isPartner() {
+        return get().user?.role === 'PARTNER';
+      },
 
       login: (authData: AuthResponse) => {
         set({

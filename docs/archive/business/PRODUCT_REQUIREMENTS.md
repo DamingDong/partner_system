@@ -21,14 +21,16 @@
 ├─────────────────┬───────────────────────┤
 │   Dashboard     │   Cards Management    │
 │   Partners      │   Revenue Sharing     │
-│   Reconciliation│   User Management     │
+│   Reconciliation│   Order Management    │
+│   User Management │   Reports & Analytics │
 └─────────────────┴───────────────────────┘
 ┌─────────────────────────────────────────┐
 │            API Services                  │
 ├─────────────────┬───────────────────────┤
 │ PartnerService  │   CardService         │
 │ SharingService  │   ReconciliationSvc   │
-│   AuthService   │   UserService         │
+│   AuthService   │   OrderService        │
+│   UserService   │   ReportService       │
 └─────────────────┴───────────────────────┘
 ┌─────────────────────────────────────────┐
 │              Data Layer                  │
@@ -42,7 +44,7 @@
 
 #### 2.2.1 用户角色定义
 - **ADMIN (管理员)**: 系统超级管理员，拥有所有权限
-- **PARTNER (合作伙伴)**: 业务合作伙伴，管理自己的会员卡和分账
+- **PARTNER (合作伙伴)**: 业务合作伙伴，管理自己的会员卡、设备和分账
 - **OPERATOR (操作员)**: 系统操作员，负责日常运营和维护
 
 #### 2.2.2 权限矩阵
@@ -50,9 +52,13 @@
 |----------|-------|---------|----------|
 | 查看仪表板 | ✓ | ✓ | ✓ |
 | 管理合作伙伴 | ✓ | ✗ | ✓ |
+| 新增合作伙伴 | ✓ | ✗ | ✓ |
 | 会员卡管理 | ✓ | ✓(仅限自己) | ✓ |
+| 设备管理 | ✓ | ✓(仅限自己) | ✓ |
 | 分账管理 | ✓ | ✓(仅限自己) | ✓ |
 | 对账管理 | ✓ | ✓(仅限自己) | ✓ |
+| 订单管理 | ✓ | ✓(仅限自己) | ✓ |
+| 订单导出 | ✓ | ✓(仅限自己) | ✓ |
 | 用户管理 | ✓ | ✗ | ✗ |
 
 ### 2.3 会员卡管理系统
@@ -63,10 +69,27 @@
 - BOUND: 绑定会员卡
 
 **会员卡状态**:
+- PENDING_BIND: 待绑定状态（手机号或设备）
+- BOUND: 已绑定状态（仅设备，MAC地址绑定）
 - ACTIVE: 激活状态
-- INACTIVE: 未激活状态
 - EXPIRED: 已过期
-- BOUND: 已绑定状态
+- CANCELLED: 已销卡
+
+**权益领取目标**：
+- 个人用户：绑定到MAC地址，状态流转为 `待绑定（MAC）→ 已绑定（MAC）→ 已激活（手机号匹配）`。
+- 设备用户：绑定到MAC地址，状态流转为 `待绑定 → 已绑定 → 已激活`。
+
+**状态流转图示**：
+```mermaid
+stateDiagram-v2
+    [*] --> 待绑定
+    待绑定 --> 已绑定: 绑定MAC地址
+    已绑定 --> 已激活: 手机号匹配（个人用户）或直接激活（设备用户）
+    已激活 --> 已过期: 到期
+    已激活 --> 已销卡: 主动销卡
+    已过期 --> 已销卡: 清理过期卡
+    已销卡 --> [*]
+```
 
 #### 2.3.2 会员卡管理功能
 - **会员卡列表**: 展示所有会员卡信息，支持搜索和筛选
@@ -75,10 +98,48 @@
 - **批量操作**: 支持批量导入、导出会员卡
 - **使用统计**: 实时显示会员卡使用情况和剩余次数
 
+### 2.4 设备管理系统
+
+#### 2.4.1 设备类型与状态
+**设备类型**:
+- ROUTER: 路由器设备
+- SWITCH: 交换机设备
+- ACCESS_POINT: 接入点设备
+
+**设备状态**:
+- ACTIVE: 活跃状态
+- INACTIVE: 未激活状态
+- SUSPENDED: 已暂停状态
+
+**回收状态**:
+- AVAILABLE: 可回收
+- LIMITED: 回收受限
+- BLOCKED: 禁止回收
+
+#### 2.4.2 设备管理功能
+- **设备列表**: 展示所有设备信息，支持搜索和筛选
+- **设备详情**: 查看单个设备的详细信息
+- **设备绑定管理**: 绑定/解绑会员卡
+- **设备状态管理**: 激活、暂停、恢复等操作
+- **批量绑定**: 支持Excel导入批量绑定设备
+- **回收管理**: 设备权益回收历史记录
+- **设备统计**: 设备使用情况和回收统计
+
+#### 2.4.3 绑定管理功能
+**绑定类型**:
+- MAC_ADDRESS: MAC地址绑定（第一优先级）
+- CHANNEL_PACKAGE: 渠道包绑定（第二优先级，激活时强制验证）
+
+**绑定信息**:
+- 设备MAC地址
+- 渠道包标识
+- 绑定手机号
+- 设备信息(名称、型号、系统版本)
+
 #### 2.3.3 绑定管理功能
 **绑定类型**:
-- MAC_ADDRESS: MAC地址绑定
-- CHANNEL_PACKAGE: 渠道包绑定
+- MAC_ADDRESS: MAC地址绑定（第一优先级）
+- CHANNEL_PACKAGE: 渠道包绑定（第二优先级，激活时强制验证）
 
 **绑定信息**:
 - 设备MAC地址
@@ -97,6 +158,9 @@
   - 1001-5000元：合作伙伴获得75%
   - 5000元以上：合作伙伴获得80%
 - 条件式分账
+
+**分账规则适用订单类型**:
+- 仅适用于订阅订单（SUBSCRIPTION），不适用于激活订单（ACTIVATION）
 
 **分账规则配置**:
 - 合作伙伴ID
@@ -118,7 +182,63 @@
 - **趋势分析**: 提供分账金额的时间趋势图表
 - **合作伙伴分析**: 按合作伙伴统计分账情况
 
-### 2.5 对账管理系统
+### 2.5 订单管理系统
+
+#### 2.5.1 订单类型与状态
+**订单类型**:
+- ACTIVATION: 激活订单 - 用户激活会员卡产生的订单
+- SUBSCRIPTION: 订阅订单 - 用户续费或升级服务产生的订单
+
+**订单状态**:
+- PENDING: 待处理
+- PROCESSING: 处理中
+- COMPLETED: 已完成
+- FAILED: 失败
+- CANCELLED: 已取消
+- REFUNDED: 已退款
+
+#### 2.5.2 订单管理功能
+- **订单列表查询**: 合作伙伴可查看与自己相关的所有订单
+- **订单筛选**: 按订单类型、状态、时间范围等条件筛选
+- **订单详情**: 查看订单的详细信息，包括金额、佣金等
+- **订单导出**: 支持导出Excel格式的订单数据
+- **订单统计**: 按时间维度统计订单数量和金额
+
+#### 2.5.3 订单信息结构
+**基本信息**:
+- 订单编号
+- 订单类型(激活/订阅)
+- 关联合作伙伴
+- 会员卡信息
+- 用户信息
+
+**金额信息**:
+- 订单金额
+- 分账比例
+- 分账金额
+- 实际结算金额
+- 费用扣除明细
+
+**时间信息**:
+- 创建时间
+- 完成时间
+- 结算时间
+- 更新时间
+
+#### 2.5.4 Excel导出功能
+**导出内容**:
+- 订单基本信息
+- 金额明细
+- 分账计算
+- 时间戳记录
+
+**导出格式**:
+- 支持.xlsx格式
+- 包含表头说明
+- 数据格式化显示
+- 支持批量导出
+
+### 2.6 对账管理系统
 
 #### 2.5.1 对账周期与类型
 **对账周期**:
@@ -172,11 +292,13 @@ src/
 │   ├── Cards.tsx       # 会员卡管理
 │   ├── Partners.tsx    # 合作伙伴管理
 │   ├── RevenueSharing.tsx # 分账管理
+│   ├── Orders.tsx      # 订单管理
 │   └── Reconciliation.tsx # 对账管理
 ├── services/           # API服务层
 │   ├── PartnerService.ts
 │   ├── CardService.ts
 │   ├── SharingService.ts
+│   ├── OrderService.ts
 │   └── ReconciliationService.ts
 ├── store/              # 状态管理
 │   └── authStore.ts    # 用户认证状态
@@ -259,6 +381,48 @@ interface MembershipCard {
 }
 ```
 
+**订单模型**:
+```typescript
+interface Order {
+  id: string;
+  orderNumber: string;
+  orderType: 'ACTIVATION' | 'SUBSCRIPTION';
+  partnerId: string;
+  partnerName: string;
+  userId?: string;
+  cardId?: string;
+  cardNumber?: string;
+  phone?: string;
+  orderAmount: number;
+  commissionRate: number;
+  commissionAmount: number;
+  actualAmount: number;
+  fees?: OrderFee[];
+  status: OrderStatus;
+  paymentInfo?: PaymentInfo;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  completedAt?: string;
+  settlementAt?: string;
+  updatedAt: string;
+}
+
+interface OrderFee {
+  type: 'platform' | 'payment' | 'tax';
+  amount: number;
+  description: string;
+}
+
+interface PaymentInfo {
+  paymentMethod: string;
+  paymentChannel: string;
+  transactionId?: string;
+  paymentTime?: string;
+}
+
+type OrderStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
+```
+
 ### 3.3 API接口设计
 
 #### 3.3.1 RESTful API规范
@@ -278,6 +442,14 @@ interface MembershipCard {
 - `PUT /cards/:id` - 更新会员卡信息
 - `POST /cards/:id/bind` - 绑定会员卡
 - `POST /cards/:id/unbind` - 解绑会员卡
+
+**订单管理**:
+- `GET /orders` - 获取订单列表
+- `GET /orders/:id` - 获取订单详情
+- `GET /orders/export` - 导出订单数据
+- `GET /orders/stats` - 获取订单统计
+- `POST /orders` - 创建订单
+- `PUT /orders/:id` - 更新订单信息
 
 **分账管理**:
 - `GET /sharing-records` - 获取分账记录
@@ -320,9 +492,9 @@ interface MembershipCard {
 
 #### 4.3.1 仪表板页面
 **功能布局**:
-- 顶部统计卡片 (总会员卡数、活跃卡数、总收入等)
-- 中间图表区域 (收入趋势图、使用分布图)
-- 底部最近交易记录
+- 顶部统计卡片 (总会员卡数、活跃卡数、总收入、订单数量等)
+- 中间图表区域 (收入趋势图、使用分布图、订单趋势图)
+- 底部最近交易记录和订单记录
 
 #### 4.3.2 会员卡管理页面
 **功能布局**:
@@ -337,7 +509,20 @@ interface MembershipCard {
 - 右侧分账明细表格
 - 底部分账规则配置区域
 
-#### 4.3.4 对账管理页面
+#### 4.3.4 订单管理页面
+**功能布局**:
+- 顶部搜索和筛选区域(订单类型、状态、时间范围)
+- 中部订单表格(订单编号、类型、金额、佣金、状态、时间)
+- 右侧快捷操作面板(导出、刷新、设置)
+- 底部分页控件和统计信息
+
+**订单详情模态框**:
+- 订单基本信息
+- 金额明细和分账计算
+- 相关会员卡信息
+- 操作日志记录
+
+#### 4.3.5 对账管理页面
 **功能布局**:
 - 顶部时间选择器
 - 中部对账单列表
@@ -397,6 +582,11 @@ interface MembershipCard {
 - 基础会员卡管理
 - 简单分账功能
 - 月度对账单
+- 硬件设备详情页：
+  - 展示设备基本信息（MAC地址、设备名称、型号）
+  - 关联会员卡信息（卡号、状态、绑定时间）
+  - 回收历史记录（回收次数、原因、天数）
+  - 回收限制提示（如“已回收3次，禁止继续回收”）
 
 ### 8.2 第二阶段
 - 高级分账规则
